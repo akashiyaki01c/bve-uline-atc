@@ -122,6 +122,7 @@ macro_rules! ats_main {
     ($t: ty) => {
         use ::std::sync::Mutex;
         use ::std::sync::OnceLock;
+        use ::bveats_rs::*;
         static ATS: OnceLock<Mutex<ats::KobeCitySubwayATS>> = OnceLock::new();
 
         #[no_mangle]

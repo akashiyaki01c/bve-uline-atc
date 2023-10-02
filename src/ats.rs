@@ -1,10 +1,11 @@
-use crate::api::*;
+use ::bveats_rs::*;
 use crate::voice::*;
 
 const ATS_SOUND_BUZZER: usize = 2;
 
 #[repr(i32)]
 #[derive(Debug)]
+#[allow(unused)]
 enum SeishinYamateStation {
     None = 0,
     S01Tanigami = 1,
@@ -28,6 +29,7 @@ enum SeishinYamateStation {
 
 #[repr(i32)]
 #[derive(Debug)]
+#[allow(unused)]
 enum SeishinYamateTrainType {
     None = 0,
     Local = 1,
@@ -92,21 +94,36 @@ impl BveAts for KobeCitySubwayATS {
         } else {
             sound[ATS_SOUND_BUZZER] = AtsSound::Continue as i32;
         }
+        for i in 23..=29 { panel[i] = 0; }
+        match self.now_signal {
+            0 => panel[23] = 1,
+            1 => panel[24] = 1,
+            2 => panel[25] = 1,
+            3 => panel[26] = 1,
+            4 => panel[27] = 1,
+            5 => panel[28] = 1,
+            6 => panel[29] = 1,
+            _ => panel[22] = 1,
+        }
+
         if (self.get_signal_speed(self.now_signal) as f32) < state.speed {
             // ATC速度超過
             println!("ATC速度超過！");
+            sound[3] = AtsSound::PlayLooping as i32;
             return AtsHandles {
                 brake: self.vehicle_spec.brake_notches,
                 power: 0,
                 reverser: self.man_reverser,
                 constant_speed: 0
             }
-        }
-        AtsHandles {
-            brake: self.man_brake,
-            power: self.man_power,
-            reverser: self.man_reverser,
-            constant_speed: 0,
+        } else {
+            sound[3] = AtsSound::Stop as i32;
+            AtsHandles {
+                brake: self.man_brake,
+                power: self.man_power,
+                reverser: self.man_reverser,
+                constant_speed: 0,
+            }
         }
     }
     fn set_power(&mut self, notch: i32) {
@@ -161,7 +178,7 @@ impl BveAts for KobeCitySubwayATS {
             },
             14 => { // 運番設定
                 if 0 <= data.optional && data.optional <= 99 {
-                    self.train_type = data.optional;
+                    self.operation_number = data.optional;
                 }
             },
             _ => println!("[ATS_WARN]: 定義されていない地上子番号です。")

@@ -1,10 +1,9 @@
 #![allow(non_snake_case)]
 #![feature(once_cell)]
 
-mod api;
 mod ats;
 mod voice;
-use crate::api::*;
+use ::bveats_rs::*;
 
 ats_main!(ats::KobeCitySubwayATS);
 
