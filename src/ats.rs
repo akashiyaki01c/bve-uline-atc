@@ -1,7 +1,27 @@
 use ::bveats_rs::*;
-use crate::voice::*;
 
 const ATS_SOUND_BUZZER: usize = 2;
+const POWER_PATTERN: [[i32; 8]; 8] = [
+    [1, 1, 1, 0, 0, 0, 0, 0], // 抑速3ノッチ
+    [0, 1, 1, 0, 0, 0, 0, 0], // 抑速2ノッチ
+    [0, 0, 1, 0, 0, 0, 0, 0], // 抑速1ノッチ
+    [0, 0, 0, 1, 0, 0, 0, 0], // 切
+    [0, 0, 0, 0, 1, 0, 0, 0], // 力行1ノッチ
+    [0, 0, 0, 0, 1, 1, 0, 0], // 力行2ノッチ
+    [0, 0, 0, 0, 1, 1, 1, 0], // 力行3ノッチ
+    [0, 0, 0, 0, 1, 1, 1, 1], // 力行4ノッチ
+];
+const BRAKE_PATTERN: [[i32; 9]; 9] = [
+    [1, 0, 0, 0, 0, 0, 0, 0, 0], // 弛め
+    [0, 1, 0, 0, 0, 0, 0, 0, 0], // ブレーキ1ノッチ
+    [0, 1, 1, 0, 0, 0, 0, 0, 0], // ブレーキ2ノッチ
+    [0, 1, 1, 1, 0, 0, 0, 0, 0], // ブレーキ3ノッチ
+    [0, 1, 1, 1, 1, 0, 0, 0, 0], // ブレーキ4ノッチ
+    [0, 1, 1, 1, 1, 1, 0, 0, 0], // ブレーキ5ノッチ
+    [0, 1, 1, 1, 1, 1, 1, 0, 0], // ブレーキ6ノッチ
+    [0, 1, 1, 1, 1, 1, 1, 1, 0], // ブレーキ7ノッチ
+    [0, 1, 1, 1, 1, 1, 1, 1, 1], // 非常ブレーキ
+];
 
 #[repr(i32)]
 #[derive(Debug)]
@@ -90,25 +110,29 @@ impl BveAts for KobeCitySubwayATS {
         if self.is_changing_signal {
             self.is_changing_signal = false;
             sound[ATS_SOUND_BUZZER] = AtsSound::Play as i32;
-            println!("ATC信号 変化！");
         } else {
             sound[ATS_SOUND_BUZZER] = AtsSound::Continue as i32;
         }
-        for i in 23..=29 { panel[i] = 0; }
+        for i in 31..=38 { panel[i] = 0; }
         match self.now_signal {
-            0 => panel[23] = 1,
-            1 => panel[24] = 1,
-            2 => panel[25] = 1,
-            3 => panel[26] = 1,
-            4 => panel[27] = 1,
-            5 => panel[28] = 1,
-            6 => panel[29] = 1,
-            _ => panel[22] = 1,
+            0 => panel[32] = 1,
+            1 => panel[33] = 1,
+            2 => panel[34] = 1,
+            3 => panel[35] = 1,
+            4 => panel[36] = 1,
+            5 => panel[37] = 1,
+            6 => panel[38] = 1,
+            _ => panel[31] = 1,
+        }
+        for i in 0..8 {
+            panel[11+i] = POWER_PATTERN[(self.man_power as usize)+3][i];
+        }
+        for i in 0..9 {
+            panel[21+i] = BRAKE_PATTERN[self.man_brake as usize][i];
         }
 
         if (self.get_signal_speed(self.now_signal) as f32) < state.speed {
             // ATC速度超過
-            println!("ATC速度超過！");
             sound[3] = AtsSound::PlayLooping as i32;
             return AtsHandles {
                 brake: self.vehicle_spec.brake_notches,
