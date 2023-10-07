@@ -58,6 +58,7 @@ pub enum AtsConstantSpeed {
 
 #[repr(C)]
 #[derive(Debug, Default)]
+#[derive(Clone, Copy)]
 pub struct AtsVehicleSpec {
     pub brake_notches: i32,
     pub power_notches: i32,
@@ -68,6 +69,7 @@ pub struct AtsVehicleSpec {
 
 #[repr(C)]
 #[derive(Debug, Default)]
+#[derive(Clone, Copy)]
 pub struct AtsVehicleState {
     pub location: f64,
     pub speed: f32,
@@ -82,6 +84,7 @@ pub struct AtsVehicleState {
 
 #[repr(C)]
 #[derive(Debug, Default)]
+#[derive(Clone, Copy)]
 pub struct AtsBeaconData {
     pub beacon_type: i32,
     pub signal: i32,
@@ -91,6 +94,7 @@ pub struct AtsBeaconData {
 
 #[repr(C)]
 #[derive(Debug, Default)]
+#[derive(Clone, Copy)]
 pub struct AtsHandles {
     pub brake: i32,
     pub power: i32,

@@ -85,6 +85,26 @@ impl KobeCitySubwayATS {
             _ => 0,
         }
     }
+
+    fn elapse_display(&mut self, _state: AtsVehicleState, panel: &mut [i32], _sound: &mut [i32]) {
+        for i in 31..=38 { panel[i] = 0; }
+        match self.now_signal {
+            0 => panel[32] = 1,
+            1 => panel[33] = 1,
+            2 => panel[34] = 1,
+            3 => panel[35] = 1,
+            4 => panel[36] = 1,
+            5 => panel[37] = 1,
+            6 => panel[38] = 1,
+            _ => panel[31] = 1,
+        }
+        for i in 0..8 {
+            panel[11+i] = POWER_PATTERN[(self.man_power as usize)+3][i];
+        }
+        for i in 0..9 {
+            panel[21+i] = BRAKE_PATTERN[self.man_brake as usize][i];
+        }
+    }
 }
 
 impl BveAts for KobeCitySubwayATS {
@@ -105,6 +125,7 @@ impl BveAts for KobeCitySubwayATS {
     }
     fn initialize(&mut self, _handle: AtsInit) {
     }
+
     fn elapse(&mut self, state: AtsVehicleState, panel: &mut [i32], sound: &mut [i32]) -> AtsHandles {
         // println!("Elapse: {:?}\n{:?}\n{:?}", state, panel, sound);
         if self.is_changing_signal {
@@ -113,23 +134,7 @@ impl BveAts for KobeCitySubwayATS {
         } else {
             sound[ATS_SOUND_BUZZER] = AtsSound::Continue as i32;
         }
-        for i in 31..=38 { panel[i] = 0; }
-        match self.now_signal {
-            0 => panel[32] = 1,
-            1 => panel[33] = 1,
-            2 => panel[34] = 1,
-            3 => panel[35] = 1,
-            4 => panel[36] = 1,
-            5 => panel[37] = 1,
-            6 => panel[38] = 1,
-            _ => panel[31] = 1,
-        }
-        for i in 0..8 {
-            panel[11+i] = POWER_PATTERN[(self.man_power as usize)+3][i];
-        }
-        for i in 0..9 {
-            panel[21+i] = BRAKE_PATTERN[self.man_brake as usize][i];
-        }
+        self.elapse_display(state, panel, sound);
 
         if (self.get_signal_speed(self.now_signal) as f32) < state.speed {
             // ATC速度超過
