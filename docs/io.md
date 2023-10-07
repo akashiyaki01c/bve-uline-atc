@@ -77,3 +77,8 @@
 |46|(TIMS)ATC解放|
 |47|(TIMS)非常ブレーキSW|
 |48|(TIMS)保安ブレーキ|
+
+# Sound Index
+|Index|概要|
+|:--:|:--|
+|3|ATC警告ブザー|
