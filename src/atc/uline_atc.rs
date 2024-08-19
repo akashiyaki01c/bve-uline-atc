@@ -104,6 +104,10 @@ pub struct ULineATC {
     pub now_signal: AtcSignal,
     /// ATCブレーキの種別
     pub atc_brake_status: AtcBrakeStatus,
+    /// 非常運転が有効になっているか
+    pub enable_02hijo_unten: bool,
+    /// 確認運転が有効になっているか
+    pub enable_01kakunin_unten: bool,
 
     /// TIMS
     tims: TIMS,
@@ -191,6 +195,14 @@ impl BveAts for ULineATC {
     fn key_down(&mut self, key: AtsKey) {
         println!("KeyDown: {:?}", key);
         match key {
+            AtsKey::D => { // 2 非常運転
+                self.enable_01kakunin_unten = false;
+                self.enable_02hijo_unten = true;
+            }
+            AtsKey::E => { // 3 確認運転
+                self.enable_01kakunin_unten = true;
+                self.enable_02hijo_unten = false;
+            }
             AtsKey::C1 => { // PageUp 運転切換スイッチ左
                 self.atc_status = self.atc_status.get_left_status();
             }
@@ -240,7 +252,9 @@ impl Default for ULineATC {
             is_changing_signal: false,
             atc_brake_status: AtcBrakeStatus::Passing,
             tims: TIMS::default(),
-            atc_status: AtcStatus::default()
+            atc_status: AtcStatus::default(),
+            enable_01kakunin_unten: false,
+            enable_02hijo_unten: false,
         }
     }
 }
