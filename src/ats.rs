@@ -1,6 +1,8 @@
 use ::bveats_rs::*;
 
-const ATS_SOUND_BUZZER: usize = 2;
+const ATS_SOUND_BELL: usize = 2;
+const ATS_SOUND_BUZZER: usize = 3;
+
 const POWER_PATTERN: [[i32; 8]; 8] = [
     [1, 1, 1, 0, 0, 0, 0, 0], // 抑速3ノッチ
     [0, 1, 1, 0, 0, 0, 0, 0], // 抑速2ノッチ
@@ -130,15 +132,15 @@ impl BveAts for KobeCitySubwayATS {
     fn elapse(&mut self, state: AtsVehicleState, panel: &mut [i32], sound: &mut [i32]) -> AtsHandles {
         if self.is_changing_signal {
             self.is_changing_signal = false;
-            sound[ATS_SOUND_BUZZER] = AtsSound::Play as i32;
+            sound[ATS_SOUND_BELL] = AtsSound::Play as i32;
         } else {
-            sound[ATS_SOUND_BUZZER] = AtsSound::Continue as i32;
+            sound[ATS_SOUND_BELL] = AtsSound::Continue as i32;
         }
         self.elapse_display(state, panel, sound);
 
         if (self.get_signal_speed(self.now_signal) as f32) < state.speed {
             // ATC速度超過
-            sound[3] = AtsSound::PlayLooping as i32;
+            sound[ATS_SOUND_BUZZER] = AtsSound::PlayLooping as i32;
             return AtsHandles {
                 brake: self.vehicle_spec.brake_notches,
                 power: 0,
@@ -146,7 +148,7 @@ impl BveAts for KobeCitySubwayATS {
                 constant_speed: 0
             }
         } else {
-            sound[3] = AtsSound::Stop as i32;
+            sound[ATS_SOUND_BUZZER] = AtsSound::Stop as i32;
             AtsHandles {
                 brake: self.man_brake,
                 power: self.man_power,
