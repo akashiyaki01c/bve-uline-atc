@@ -1,7 +1,7 @@
-use bveats_rs::{AtsBeaconData, AtsHorn, AtsInit, AtsKey, AtsVehicleSpec, AtsVehicleState};
+use bveats_rs::{AtsBeaconData, AtsHorn, AtsInit, AtsKey, AtsSound, AtsVehicleSpec, AtsVehicleState};
 
 #[repr(i32)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[allow(unused)]
 enum ULineStation {
     None = 0,
@@ -35,7 +35,7 @@ impl ULineStation {
 }
 
 #[repr(i32)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[allow(unused)]
 enum ULineTrainType {
     None = 0,
@@ -126,6 +126,9 @@ pub struct TIMS {
     
     /// BVE上での距離
     bve_distance: f64,
+
+    /// 前回、回送放送が流れた時刻
+    out_of_service_sound_time: i32,
 }
 
 impl TIMS {
@@ -143,6 +146,7 @@ impl TIMS {
 
     pub(super) fn elapse(&mut self, _state: AtsVehicleState, _panel: &mut [i32], _sound: &mut [i32]) {
         self.bve_distance = _state.location;
+        self.elapse_out_of_service_sound(_state, _sound);
 
 		let total_second = _state.time / 1000;
 		let hours = total_second / 60 / 60;
@@ -246,4 +250,21 @@ impl TIMS {
             _ => println!("[ATS_WARN]: 定義されていない地上子番号です。")
         }
 	}
+}
+impl TIMS {
+    fn elapse_out_of_service_sound(&mut self, _state: AtsVehicleState, sound: &mut [i32]) {
+        if !(self.train_type == ULineTrainType::OutOfService) && !(self.train_type == ULineTrainType::TestRun) {
+            return
+        }
+        if _state.speed > 5.0 {
+            return
+        }
+
+        if self.out_of_service_sound_time + 10000 < _state.time {
+            sound[100] = AtsSound::Play as i32;
+            self.out_of_service_sound_time = _state.time;
+        } else {
+            sound[100] = AtsSound::Continue as i32;
+        }
+    }
 }

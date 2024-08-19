@@ -153,6 +153,7 @@ pub struct ULineATC {
     pub enable_01kakunin_unten: bool,
 
     time: i32,
+    speed: f32,
 
     /// TIMS
     tims: TIMS,
@@ -162,6 +163,7 @@ pub struct ULineATC {
     /// 非常放送
     emg_sound: EmgSound,
     emg_sound_keydown: EmgSoundKeyDown,
+    is_emg_brake_sound: bool,
 }
 
 impl ULineATC {
@@ -187,7 +189,7 @@ impl ULineATC {
         panel[40] = if self.enable_02hijo_unten { 1 } else { 0 };
         panel[41] = if self.enable_01kakunin_unten { 1 } else { 0 };
     }
-    fn elapse_emg_sound(&self, sound: &mut [i32]) {
+    fn elapse_emg_sound(&mut self, sound: &mut [i32]) {
         for i in 101..=105 { sound[i] = AtsSound::Continue as i32; }
         match self.emg_sound {
             EmgSound::SignalWait => sound[101] = AtsSound::Play as i32,
@@ -196,6 +198,12 @@ impl ULineATC {
             EmgSound::SeatExchange => sound[104] = AtsSound::Play as i32,
             EmgSound::EmergencyBrake => sound[105] = AtsSound::Play as i32,
             _ => {}
+        }
+        if self.is_emg_brake_sound {
+            sound[106] = AtsSound::Play as i32;
+            self.is_emg_brake_sound = false;
+        } else {
+            sound[106] = AtsSound::Continue as i32;
         }
     }
     fn show_atc_status(&mut self, panel: &mut [i32]) {
@@ -234,6 +242,7 @@ impl BveAts for ULineATC {
 
     fn elapse(&mut self, state: AtsVehicleState, panel: &mut [i32], sound: &mut [i32]) -> AtsHandles {
         self.time = state.time;
+        self.speed = state.speed;
         self.show_atc_status(panel);
         self.elapse_emg_sound(sound);
         self.tims.elapse(state, panel, sound);
@@ -255,6 +264,10 @@ impl BveAts for ULineATC {
     fn set_brake(&mut self, notch: i32) {
         println!("SetBrake: {:?}", notch);
         self.man_brake = notch;
+        if notch == self.vehicle_spec.brake_notches + 1 && self.speed > 5.0 {
+            self.is_emg_brake_sound = true;
+        }
+
         self.tims.set_brake(notch);
     }
     fn set_reverser(&mut self, notch: i32) {
@@ -410,7 +423,9 @@ impl Default for ULineATC {
             enable_02hijo_unten: false,
             emg_sound: EmgSound::default(),
             emg_sound_keydown: EmgSoundKeyDown::default(),
-            time: 0
+            time: 0,
+            speed: 0.0,
+            is_emg_brake_sound: false
         }
     }
 }
