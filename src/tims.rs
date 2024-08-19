@@ -66,31 +66,31 @@ impl TIMS {
     pub(super) fn dispose(&mut self) {
     }
 
-    pub(super) fn set_vehicle_spec(&mut self, spec: AtsVehicleSpec) {
+    pub(super) fn set_vehicle_spec(&mut self, _spec: AtsVehicleSpec) {
     }
 
-    pub(super) fn initialize(&mut self, handle: AtsInit) {
+    pub(super) fn initialize(&mut self, _handle: AtsInit) {
     }
 
-    pub(super) fn elapse(&mut self, state: AtsVehicleState, panel: &mut [i32], sound: &mut [i32]) {
+    pub(super) fn elapse(&mut self, _state: AtsVehicleState, _panel: &mut [i32], _sound: &mut [i32]) {
 		
 	}
-	pub(super) fn set_power(&mut self, notch: i32) {
+	pub(super) fn set_power(&mut self, _notch: i32) {
     }
 
-    pub(super) fn set_brake(&mut self, notch: i32) {
+    pub(super) fn set_brake(&mut self, _notch: i32) {
     }
 
-    pub(super) fn set_reverser(&mut self, notch: i32) {
+    pub(super) fn set_reverser(&mut self, _notch: i32) {
     }
 
-    pub(super) fn key_down(&mut self, key: AtsKey) {
+    pub(super) fn key_down(&mut self, _key: AtsKey) {
     }
 
-    pub(super) fn key_up(&mut self, key: AtsKey) {
+    pub(super) fn key_up(&mut self, _key: AtsKey) {
     }
 
-    pub(super) fn horn_blow(&mut self, horn_type: AtsHorn) {
+    pub(super) fn horn_blow(&mut self, _horn_type: AtsHorn) {
     }
 
     pub(super) fn door_open(&mut self) {
@@ -99,7 +99,7 @@ impl TIMS {
     pub(super) fn door_close(&mut self) {
     }
 
-    pub(super) fn set_signal(&mut self, signal: i32) {
+    pub(super) fn set_signal(&mut self, _signal: i32) {
     }
 	pub(super) fn set_beacon_data(&mut self, data: AtsBeaconData) {
 		match data.beacon_type {
