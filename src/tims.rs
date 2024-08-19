@@ -1,7 +1,7 @@
 use bveats_rs::{AtsBeaconData, AtsHorn, AtsInit, AtsKey, AtsVehicleSpec, AtsVehicleState};
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 #[allow(unused)]
 enum ULineStation {
     None = 0,
@@ -28,9 +28,14 @@ impl Default for ULineStation {
 		Self::None
 	}
 }
+impl ULineStation {
+	pub fn to_i32(self) -> i32 {
+		unsafe { std::mem::transmute(self) }
+	}
+}
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 #[allow(unused)]
 enum ULineTrainType {
     None = 0,
@@ -39,6 +44,11 @@ enum ULineTrainType {
     TestRun = 3,
     Rapid1 = 4,
     Rapid2 = 5,
+}
+impl ULineTrainType {
+	pub fn to_i32(self) -> i32 {
+		unsafe { std::mem::transmute(self) }
+	}
 }
 impl Default for ULineTrainType {
 	fn default() -> Self {
@@ -73,7 +83,23 @@ impl TIMS {
     }
 
     pub(super) fn elapse(&mut self, _state: AtsVehicleState, _panel: &mut [i32], _sound: &mut [i32]) {
-		
+		let total_second = _state.time / 1000;
+		let hours = total_second / 60 / 60;
+		let minutes = total_second / 60 % 60;
+		let seconds = total_second % 60;
+
+		_panel[101] = self.operation_number / 10;
+		_panel[102] = self.operation_number % 10;
+		_panel[103] = self.train_type.to_i32();
+		_panel[104] = self.destination.to_i32();
+		// _panel[105] = 
+		// _panel[106] =
+		_panel[107] = hours / 10;
+		_panel[108] = hours % 10;
+		_panel[109] = minutes / 10;
+		_panel[110] = minutes % 10;
+		_panel[111] = seconds / 10;
+		_panel[112] = seconds % 10;
 	}
 	pub(super) fn set_power(&mut self, _notch: i32) {
     }
