@@ -20,6 +20,10 @@ pub enum AtcSignal {
     Signal75 = 6,
     /// 90信号
     Signal90 = 7,
+    /// 入換15信号
+    Irekae15 = 8,
+    /// 入換25信号
+    Irekae25 = 9,
 }
 impl AtcSignal {
     pub fn getSpeed(&self) -> i32 {
@@ -32,6 +36,8 @@ impl AtcSignal {
             Self::Signal60 => 60,
             Self::Signal75 => 75,
             Self::Signal90 => 90,
+            Self::Irekae15 => 15,
+            Self::Irekae25 => 25,
         }
     }
 }

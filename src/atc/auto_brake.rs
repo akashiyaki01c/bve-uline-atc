@@ -62,6 +62,10 @@ pub fn elapse_atc_brake(atc: &mut ULineATC, state: AtsVehicleState, sound: &mut 
 		}
 	}
 	// ブレーキが解除された瞬間
+	if atc.atc_brake_status == AtcBrakeStatus::EmergencyBraking && !enable_auto_brake {
+		println!("[Brake] EmgBraking -> Passing");
+		atc.atc_brake_status = AtcBrakeStatus::Passing;
+	}
 	if atc.atc_brake_status == AtcBrakeStatus::FullBraking && !enable_auto_brake {
 		println!("[Brake] FullBraking -> Passing");
 		atc.atc_brake_status = AtcBrakeStatus::Passing;
@@ -134,4 +138,21 @@ pub fn elapse_atc_brake(atc: &mut ULineATC, state: AtsVehicleState, sound: &mut 
 		AtcBrakeStatus::FullBraking => atc_full_brake_handle,
 		AtcBrakeStatus::Passing => atc_none_brake_handle,
 	}
+}
+
+pub fn elapse_irekae_brake(atc: &mut ULineATC, state: AtsVehicleState, sound: &mut [i32]) -> AtsHandles {
+	let atc_none_brake_handle = get_none_brake_handle(atc);
+	let atc_full_brake_handle = get_full_brake_handle(atc);
+
+	let atc_signal_speed = atc.now_signal.getSpeed();
+	if atc_signal_speed < (state.speed as i32).min(25) {
+		atc_full_brake_handle
+	} else {
+		atc_none_brake_handle
+	}
+}
+
+pub fn elapse_hisetsu_brake(atc: &mut ULineATC, _state: AtsVehicleState, _sound: &mut [i32]) -> AtsHandles {
+	let atc_none_brake_handle = get_none_brake_handle(atc);
+	atc_none_brake_handle
 }
