@@ -1,9 +1,11 @@
 #![allow(non_snake_case)]
 #![feature(once_cell)]
 
-mod ats;
+mod atc;
 mod voice;
+mod tims;
+
 use ::bveats_rs::*;
 
-ats_main!(ats::KobeCitySubwayATS);
+ats_main!(crate::atc::uline_atc::ULineATC);
 
