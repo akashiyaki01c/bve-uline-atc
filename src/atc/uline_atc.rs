@@ -139,7 +139,7 @@ pub struct ULineATC {
 }
 
 impl ULineATC {
-    fn elapse_display(&mut self, _state: AtsVehicleState, panel: &mut [i32], _sound: &mut [i32]) {
+    fn elapse_display(&mut self, _state: AtsVehicleState, panel: &mut [i32], handles: &AtsHandles) {
         for i in 31..=38 { panel[i] = 0; }
         match self.now_signal {
             AtcSignal::Signal02 => panel[31] = 1,
@@ -152,10 +152,10 @@ impl ULineATC {
             AtcSignal::Signal90 => panel[38] = 1,
         }
         for i in 0..8 {
-            panel[11+i] = POWER_PATTERN[(self.man_power as usize)+3][i];
+            panel[11+i] = POWER_PATTERN[(handles.power as usize)+3][i];
         }
         for i in 0..9 {
-            panel[21+i] = BRAKE_PATTERN[self.man_brake as usize][i];
+            panel[21+i] = BRAKE_PATTERN[handles.brake as usize][i];
         }
     }
     fn elapse_emg_sound(&self, sound: &mut [i32]) {
@@ -204,13 +204,13 @@ impl BveAts for ULineATC {
     }
 
     fn elapse(&mut self, state: AtsVehicleState, panel: &mut [i32], sound: &mut [i32]) -> AtsHandles {
-        self.elapse_display(state, panel, sound);
         self.show_atc_status(panel);
         self.elapse_emg_sound(sound);
         self.tims.elapse(state, panel, sound);
 
-        let brake = elapse_atc_brake(self, state, sound);
-        brake
+        let handles = elapse_atc_brake(self, state, sound);
+        self.elapse_display(state, panel, &handles);
+        handles
     }
     fn set_power(&mut self, notch: i32) {
         println!("SetPower: {:?}", notch);
