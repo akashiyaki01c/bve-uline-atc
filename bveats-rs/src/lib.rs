@@ -127,7 +127,7 @@ macro_rules! ats_main {
         use ::std::sync::Mutex;
         use ::std::sync::OnceLock;
         use ::bveats_rs::*;
-        static ATS: OnceLock<Mutex<ats::KobeCitySubwayATS>> = OnceLock::new();
+        static ATS: OnceLock<Mutex<$t>> = OnceLock::new();
 
         #[no_mangle]
         pub unsafe extern "C" fn Load() {
