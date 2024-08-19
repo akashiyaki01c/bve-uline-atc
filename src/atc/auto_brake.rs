@@ -140,7 +140,7 @@ pub fn elapse_atc_brake(atc: &mut ULineATC, state: AtsVehicleState, sound: &mut 
 	}
 }
 
-pub fn elapse_irekae_brake(atc: &mut ULineATC, state: AtsVehicleState, sound: &mut [i32]) -> AtsHandles {
+pub fn elapse_irekae_brake(atc: &mut ULineATC, state: AtsVehicleState, _sound: &mut [i32]) -> AtsHandles {
 	let atc_none_brake_handle = get_none_brake_handle(atc);
 	let atc_full_brake_handle = get_full_brake_handle(atc);
 

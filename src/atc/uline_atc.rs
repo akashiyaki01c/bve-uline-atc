@@ -245,8 +245,6 @@ impl BveAts for ULineATC {
             AtcStatus::Hisetsu => elapse_hisetsu_brake(self, state, sound)
         };
         self.elapse_display(state, panel, &handles);
-        println!("{:?}", self.now_signal);
-
         handles
     }
     fn set_power(&mut self, notch: i32) {

@@ -143,7 +143,6 @@ impl TIMS {
 
     pub(super) fn elapse(&mut self, _state: AtsVehicleState, _panel: &mut [i32], _sound: &mut [i32]) {
         self.bve_distance = _state.location;
-        println!("{:?}", self.position);
 
 		let total_second = _state.time / 1000;
 		let hours = total_second / 60 / 60;
