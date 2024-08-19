@@ -56,6 +56,58 @@ impl Default for ULineTrainType {
 	}
 }
 
+/// TIMSで管理する位置情報の起点を表す
+#[derive(Debug)]
+pub enum TimsPosition {
+    /// 西神線、山手線を表す
+    SeishinYamate(f32, f32),
+    /// 西神延伸線を表す (prefix=N)
+    SeishinEnshin(f32, f32),
+    /// 北神線を表す (prefix=N)
+    Hokushin(f32, f32)
+}
+impl Default for TimsPosition {
+    fn default() -> Self {
+        Self::SeishinYamate(0.0, 0.0)
+    }
+}
+impl TimsPosition {
+    /// TIMS画面上の距離を取得する関数
+    pub fn get_tims_distance(&self, distance: f32, is_negative: bool) -> f32 {
+        match self {
+            Self::SeishinYamate(bve_distance, origin) => {
+                if is_negative {
+                    (origin - bve_distance) - distance
+                } else {
+                    (origin - bve_distance) + distance
+                }
+            }
+            Self::SeishinEnshin(bve_distance, origin) => {
+                if is_negative {
+                    (origin - bve_distance) - distance
+                } else {
+                    (origin - bve_distance) + distance
+                }
+            }
+            Self::Hokushin(bve_distance, origin) => {
+                if is_negative {
+                    (origin - bve_distance) - distance
+                } else {
+                    (origin - bve_distance) + distance
+                }
+            }
+        }
+    }
+    /// TIMS画面上の距離につく接頭辞インデックス
+    pub fn get_tims_distance_prefix(&self) -> i32 {
+        match self {
+            Self::SeishinYamate(_, _) => 0,
+            Self::SeishinEnshin(_, _) => 1,
+            Self::Hokushin(_, _) => 2,
+        }
+    }
+}
+
 /// TIMSを表す
 #[derive(Default)]
 pub struct TIMS {
@@ -67,6 +119,13 @@ pub struct TIMS {
     train_type: ULineTrainType,
     /// TIMS 列車番号
     operation_number: i32,
+    /// TIMS位置情報
+    position: TimsPosition,
+    /// TIMS 位置情報を減算していくか
+    is_position_negative: bool,
+    
+    /// BVE上での距離
+    bve_distance: f64,
 }
 
 impl TIMS {
@@ -83,6 +142,9 @@ impl TIMS {
     }
 
     pub(super) fn elapse(&mut self, _state: AtsVehicleState, _panel: &mut [i32], _sound: &mut [i32]) {
+        self.bve_distance = _state.location;
+        println!("{:?}", self.position);
+
 		let total_second = _state.time / 1000;
 		let hours = total_second / 60 / 60;
 		let minutes = total_second / 60 % 60;
@@ -100,6 +162,13 @@ impl TIMS {
 		_panel[110] = minutes % 10;
 		_panel[111] = seconds / 10;
 		_panel[112] = seconds % 10;
+
+        _panel[116] = self.position.get_tims_distance_prefix();
+        let distance = self.position.get_tims_distance(_state.location as f32, self.is_position_negative).abs() as i32;
+        _panel[117] = distance / 10000 % 10;
+        _panel[118] = distance / 1000 % 10;
+        _panel[119] = distance / 100 % 10;
+        _panel[120] = distance / 10 % 10;
 	}
 	pub(super) fn set_power(&mut self, _notch: i32) {
     }
@@ -147,6 +216,32 @@ impl TIMS {
             14 => { // 運番設定
                 if 0 <= data.optional && data.optional <= 99 {
                     self.operation_number = data.optional;
+                }
+            },
+            15 => { // TIMS 距離程プレフィックスの設定
+                let (bve_distance, origin) = match self.position {
+                    TimsPosition::SeishinYamate(bve_distance, origin) => (bve_distance, origin),
+                    TimsPosition::SeishinEnshin(bve_distance, origin) => (bve_distance, origin),
+                    TimsPosition::Hokushin(bve_distance, origin) => (bve_distance, origin),
+                };
+                match data.optional {
+                    0 => self.position = TimsPosition::SeishinYamate(bve_distance, origin),
+                    1 => self.position = TimsPosition::SeishinEnshin(bve_distance, origin),
+                    2 => self.position = TimsPosition::Hokushin(bve_distance, origin),
+                    _ => {}
+                }
+            },
+            16 => { // TIMS 距離原点の設定
+                self.position = match self.position {
+                    TimsPosition::SeishinYamate(_, _) => TimsPosition::SeishinYamate(self.bve_distance as f32, data.optional as f32),
+                    TimsPosition::SeishinEnshin(_, _) => TimsPosition::SeishinEnshin(self.bve_distance as f32, data.optional as f32),
+                    TimsPosition::Hokushin(_, _) => TimsPosition::Hokushin(self.bve_distance as f32, data.optional as f32),
+                };
+            },
+            17 => { // TIMS 距離加減算の設定
+                match data.optional {
+                    0 => self.is_position_negative = false,
+                    _ => self.is_position_negative = true,
                 }
             },
             _ => println!("[ATS_WARN]: 定義されていない地上子番号です。")

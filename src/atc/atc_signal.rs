@@ -2,7 +2,7 @@
 #[allow(dead_code)]
 #[repr(u8)]
 #[derive(Clone, Copy)]
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum AtcSignal {
     /// 02信号(絶対停止)
     Signal02 = 0,

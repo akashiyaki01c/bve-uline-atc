@@ -29,7 +29,7 @@ const BRAKE_PATTERN: [[i32; 9]; 9] = [
 
 /// 現在のATCブレーキ種別
 #[allow(dead_code)]
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum AtcBrakeStatus {
     /// ATCブレーキ制御なし
     Passing,
@@ -48,7 +48,7 @@ impl Default for AtcBrakeStatus {
 
 /// 現在のATC種別
 #[allow(dead_code)]
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum AtcStatus {
     /// ATO制御
     ATO,
@@ -87,7 +87,7 @@ impl AtcStatus {
 
 /// 非常放送の種類を表す
 #[allow(dead_code)]
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum EmgSound {
     /// なし
     None,
@@ -135,7 +135,7 @@ pub struct ULineATC {
     /// ATCの状態
     pub atc_status: AtcStatus,
     /// 非常放送
-    emg_sound: EmgSound
+    emg_sound: EmgSound,
 }
 
 impl ULineATC {
@@ -157,6 +157,8 @@ impl ULineATC {
         for i in 0..9 {
             panel[21+i] = BRAKE_PATTERN[handles.brake as usize][i];
         }
+        panel[40] = if self.enable_02hijo_unten { 1 } else { 0 };
+        panel[41] = if self.enable_01kakunin_unten { 1 } else { 0 };
     }
     fn elapse_emg_sound(&self, sound: &mut [i32]) {
         for i in 101..=105 { sound[i] = AtsSound::Continue as i32; }
@@ -210,6 +212,8 @@ impl BveAts for ULineATC {
 
         let handles = elapse_atc_brake(self, state, sound);
         self.elapse_display(state, panel, &handles);
+        println!("{:?}", self.now_signal);
+
         handles
     }
     fn set_power(&mut self, notch: i32) {
@@ -284,9 +288,11 @@ impl BveAts for ULineATC {
     }
     fn set_signal(&mut self, signal: i32) {
         println!("SetSignal: {:?}", signal);
-        self.now_signal = unsafe { std::mem::transmute(signal as u8) };
-        self.is_changing_signal = true;
-        self.tims.set_signal(signal);
+        if 0 <= signal && signal <= 7 {
+            self.now_signal = unsafe { std::mem::transmute(signal as u8) };
+            self.is_changing_signal = true;
+            self.tims.set_signal(signal);
+        }
     }
     fn set_beacon_data(&mut self, data: AtsBeaconData) {
         println!("SetBeaconData: {:?}", data);
