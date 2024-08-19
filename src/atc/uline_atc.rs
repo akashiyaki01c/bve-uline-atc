@@ -85,6 +85,29 @@ impl AtcStatus {
     }
 }
 
+/// 非常放送の種類を表す
+#[allow(dead_code)]
+#[derive(PartialEq)]
+pub enum EmgSound {
+    /// なし
+    None,
+    /// 信号待ち
+    SignalWait,
+    /// 急病人
+    EmergencyCase,
+    /// 緊急停止
+    EmergencyStop,
+    /// シート交換
+    SeatExchange,
+    /// 非常ブレーキ
+    EmergencyBrake,
+}
+impl Default for EmgSound {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
 pub struct ULineATC {
     /// 車両諸元
     pub vehicle_spec: AtsVehicleSpec,
@@ -111,6 +134,8 @@ pub struct ULineATC {
     tims: TIMS,
     /// ATCの状態
     pub atc_status: AtcStatus,
+    /// 非常放送
+    emg_sound: EmgSound
 }
 
 impl ULineATC {
@@ -131,6 +156,17 @@ impl ULineATC {
         }
         for i in 0..9 {
             panel[21+i] = BRAKE_PATTERN[self.man_brake as usize][i];
+        }
+    }
+    fn elapse_emg_sound(&self, sound: &mut [i32]) {
+        for i in 101..=105 { sound[i] = AtsSound::Continue as i32; }
+        match self.emg_sound {
+            EmgSound::SignalWait => sound[101] = AtsSound::Play as i32,
+            EmgSound::EmergencyCase => sound[102] = AtsSound::Play as i32,
+            EmgSound::EmergencyStop => sound[103] = AtsSound::Play as i32,
+            EmgSound::SeatExchange => sound[104] = AtsSound::Play as i32,
+            EmgSound::EmergencyBrake => sound[105] = AtsSound::Play as i32,
+            _ => {}
         }
     }
     fn show_atc_status(&mut self, panel: &mut [i32]) {
@@ -170,6 +206,7 @@ impl BveAts for ULineATC {
     fn elapse(&mut self, state: AtsVehicleState, panel: &mut [i32], sound: &mut [i32]) -> AtsHandles {
         self.elapse_display(state, panel, sound);
         self.show_atc_status(panel);
+        self.elapse_emg_sound(sound);
         self.tims.elapse(state, panel, sound);
 
         let brake = elapse_atc_brake(self, state, sound);
@@ -213,6 +250,24 @@ impl BveAts for ULineATC {
     }
     fn key_up(&mut self, key: AtsKey) {
         println!("KeyUp: {:?}", key);
+        match key {
+            AtsKey::H => { // 6 非常放送 信号待ち
+                self.emg_sound = EmgSound::SignalWait;
+            }
+            AtsKey::I => { // 7 非常放送 急病人対応
+                self.emg_sound = EmgSound::EmergencyCase;
+            }
+            AtsKey::J => { // 8 非常放送 緊急停止
+                self.emg_sound = EmgSound::EmergencyStop;
+            }
+            AtsKey::K => { // 9 非常放送 シート交換
+                self.emg_sound = EmgSound::SeatExchange;
+            }
+            AtsKey::L => { // 0 非常放送 非常ブレーキ
+                self.emg_sound = EmgSound::EmergencyBrake;
+            }
+            _ => {}
+        }
         self.tims.key_up(key);
     }
     fn horn_blow(&mut self, horn_type: AtsHorn) {
@@ -253,6 +308,7 @@ impl Default for ULineATC {
             atc_status: AtcStatus::default(),
             enable_01kakunin_unten: false,
             enable_02hijo_unten: false,
+            emg_sound: EmgSound::default()
         }
     }
 }
