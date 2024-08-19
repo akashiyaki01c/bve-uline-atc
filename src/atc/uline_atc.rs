@@ -36,9 +36,7 @@ pub enum AtcBrakeStatus {
     /// ATC通常ブレーキ中
     FullBraking,
     /// ATC緩和ブレーキ中 (ATCブレーキ設定)
-    StartHalfBraking(i32),
-    /// ATC緩和ブレーキ中 (ATCブレーキ解除)
-    EndHalfBraking(i32),
+    HalfBraking(i32),
     /// ATC非常ブレーキ中
     EmergencyBraking,
 }

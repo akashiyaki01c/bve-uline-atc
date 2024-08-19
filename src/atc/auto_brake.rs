@@ -52,36 +52,23 @@ pub fn elapse_atc_brake(atc: &mut ULineATC, state: AtsVehicleState, sound: &mut 
 	// ブレーキが掛かった瞬間
 	if atc.atc_brake_status == AtcBrakeStatus::Passing && enable_auto_brake {
 		println!("[Brake] Passing -> StartHalfBraking");
-		atc.atc_brake_status = AtcBrakeStatus::StartHalfBraking(state.time);
-	}
-	if enable_auto_brake {
-		println!("[Brake] EndHalfBraking -> StartHalfBraking");
-		if let AtcBrakeStatus::EndHalfBraking(_) = atc.atc_brake_status {
-			atc.atc_brake_status = AtcBrakeStatus::StartHalfBraking(state.time);
-		}
+		atc.atc_brake_status = AtcBrakeStatus::HalfBraking(state.time);
 	}
 	// 緩和ブレーキからフルブレーキになる瞬間
-	if let AtcBrakeStatus::StartHalfBraking(time) = atc.atc_brake_status {
+	if let AtcBrakeStatus::HalfBraking(time) = atc.atc_brake_status {
 		println!("[Brake] StartHalfBraking -> FullBraking");
-		if time + 1000 < state.time {
+		if time + 700 < state.time {
 			atc.atc_brake_status = AtcBrakeStatus::FullBraking;
 		}
 	}
 	// ブレーキが解除された瞬間
 	if atc.atc_brake_status == AtcBrakeStatus::FullBraking && !enable_auto_brake {
-		println!("[Brake] FullBraking -> EndHalfBraking");
-		atc.atc_brake_status = AtcBrakeStatus::EndHalfBraking(state.time);
+		println!("[Brake] FullBraking -> Passing");
+		atc.atc_brake_status = AtcBrakeStatus::Passing;
 	}
 	if !enable_auto_brake {
-		if let AtcBrakeStatus::StartHalfBraking(_) = atc.atc_brake_status {
-			println!("[Brake] StartHalfBraking -> EndHalfBraking");
-			atc.atc_brake_status = AtcBrakeStatus::EndHalfBraking(state.time);
-		}
-	}
-	// 緩和ブレーキから緩解になる瞬間
-	if let AtcBrakeStatus::EndHalfBraking(time) = atc.atc_brake_status {
-		println!("[Brake] EndHalfBraking -> Passing");
-		if time + 1000 < state.time {
+		if let AtcBrakeStatus::HalfBraking(_) = atc.atc_brake_status {
+			println!("[Brake] StartHalfBraking -> Passing");
 			atc.atc_brake_status = AtcBrakeStatus::Passing;
 		}
 	}
@@ -143,8 +130,7 @@ pub fn elapse_atc_brake(atc: &mut ULineATC, state: AtsVehicleState, sound: &mut 
 
 	match atc.atc_brake_status {
 		AtcBrakeStatus::EmergencyBraking => atc_emg_brake_handle,
-		AtcBrakeStatus::StartHalfBraking(_) => atc_half_brake_handle,
-		AtcBrakeStatus::EndHalfBraking(_) => atc_half_brake_handle,
+		AtcBrakeStatus::HalfBraking(_) => atc_half_brake_handle,
 		AtcBrakeStatus::FullBraking => atc_full_brake_handle,
 		AtcBrakeStatus::Passing => atc_none_brake_handle,
 	}
