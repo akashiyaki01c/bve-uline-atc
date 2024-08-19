@@ -76,12 +76,13 @@ impl KobeCitySubwayATS {
     fn get_signal_speed(&self, signal: i32) -> i32 {
         match signal {
             0 => 0,
-            1 => 15,
-            2 => 25,
-            3 => 45,
-            4 => 60,
-            5 => 75,
-            6 => 90,
+            1 => 0,
+            2 => 15,
+            3 => 25,
+            4 => 45,
+            5 => 60,
+            6 => 75,
+            7 => 90,
             _ => 0,
         }
     }
@@ -127,7 +128,6 @@ impl BveAts for KobeCitySubwayATS {
     }
 
     fn elapse(&mut self, state: AtsVehicleState, panel: &mut [i32], sound: &mut [i32]) -> AtsHandles {
-        // println!("Elapse: {:?}\n{:?}\n{:?}", state, panel, sound);
         if self.is_changing_signal {
             self.is_changing_signal = false;
             sound[ATS_SOUND_BUZZER] = AtsSound::Play as i32;
