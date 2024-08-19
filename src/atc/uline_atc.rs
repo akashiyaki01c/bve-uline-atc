@@ -68,8 +68,8 @@ impl Default for AtcStatus {
 }
 impl AtcStatus {
     /// 運転切り替えスイッチを右に回した時のステータス
-    fn get_right_status(status: AtcStatus) -> AtcStatus {
-        match status {
+    pub fn get_right_status(&self) -> AtcStatus {
+        match self {
             AtcStatus::ATO => AtcStatus::ATO,
             AtcStatus::ATC => AtcStatus::ATO,
             AtcStatus::Irekae => AtcStatus::ATC,
@@ -77,8 +77,8 @@ impl AtcStatus {
         }
     }
     /// 運転切り替えスイッチを左に回した時のステータス
-    fn get_left_status(status: AtcStatus) -> AtcStatus {
-        match status {
+    pub fn get_left_status(&self) -> AtcStatus {
+        match self {
             AtcStatus::ATO => AtcStatus::ATC,
             AtcStatus::ATC => AtcStatus::Irekae,
             AtcStatus::Irekae => AtcStatus::Hisetsu,
@@ -131,6 +131,15 @@ impl ULineATC {
             panel[21+i] = BRAKE_PATTERN[self.man_brake as usize][i];
         }
     }
+    fn show_atc_status(&mut self, panel: &mut [i32]) {
+        for i in 42..=45 { panel[i] = 0; }
+        match self.atc_status {
+            AtcStatus::Hisetsu => panel[42] = 1,
+            AtcStatus::Irekae => panel[43] = 1,
+            AtcStatus::ATC => panel[44] = 1,
+            AtcStatus::ATO => panel[45] = 1,
+        }
+    }
 }
 
 impl BveAts for ULineATC {
@@ -158,6 +167,7 @@ impl BveAts for ULineATC {
 
     fn elapse(&mut self, state: AtsVehicleState, panel: &mut [i32], sound: &mut [i32]) -> AtsHandles {
         self.elapse_display(state, panel, sound);
+        self.show_atc_status(panel);
         self.tims.elapse(state, panel, sound);
 
         let brake = elapse_atc_brake(self, state, sound);
@@ -180,6 +190,15 @@ impl BveAts for ULineATC {
     }
     fn key_down(&mut self, key: AtsKey) {
         println!("KeyDown: {:?}", key);
+        match key {
+            AtsKey::C1 => { // PageUp 運転切換スイッチ左
+                self.atc_status = self.atc_status.get_left_status();
+            }
+            AtsKey::C2 => { // PageDown 運転切換スイッチ右
+                self.atc_status = self.atc_status.get_right_status();
+            }
+            _ => {}
+        }
         self.tims.key_down(key);
     }
     fn key_up(&mut self, key: AtsKey) {
