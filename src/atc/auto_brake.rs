@@ -17,7 +17,7 @@ fn get_none_brake_handle(atc: &ULineATC) -> AtsHandles {
 /// ATC緩和ブレーキ状態のAtsHandlesを取得
 fn get_half_brake_handle(atc: &ULineATC) -> AtsHandles {
 	AtsHandles {
-		brake: atc.vehicle_spec.brake_notches / 2,
+		brake: 4,
 		power: 0,
 		reverser: atc.man_reverser,
 		constant_speed: 0

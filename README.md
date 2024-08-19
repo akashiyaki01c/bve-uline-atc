@@ -8,4 +8,10 @@
 
 
 ## ドキュメント類
-[Beacon/Signalなど各種インデックス](./docs/io.md)
+* [地上子仕様](./docs/beacon.md)
+* [キー仕様](./docs/key.md)
+* [パネル仕様](./docs/panel.md)
+* [信号インデックス仕様](./docs/signal.md)
+* [サウンド仕様](./docs/sound.md)
+* [駅ID仕様](./docs/station.md)
+* [列車種別仕様](./docs/type.md)

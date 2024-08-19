@@ -4,13 +4,21 @@
 #[derive(Clone, Copy)]
 #[derive(PartialEq)]
 pub enum AtcSignal {
+    /// 02信号(絶対停止)
     Signal02 = 0,
+    /// 01信号(許容停止)
     Signal01 = 1,
+    /// 15信号
     Signal15 = 2,
+    /// 25信号
     Signal25 = 3,
+    /// 45信号
     Signal45 = 4,
+    /// 60信号
     Signal60 = 5,
+    /// 75信号
     Signal75 = 6,
+    /// 90信号
     Signal90 = 7,
 }
 impl AtcSignal {
