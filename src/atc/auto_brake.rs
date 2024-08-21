@@ -1,4 +1,4 @@
-use bveats_rs::{AtsHandles, AtsSound, AtsVehicleState};
+use bveats_rs::{AtsConstantSpeed, AtsHandles, AtsSound, AtsVehicleState};
 
 use super::{atc_signal::AtcSignal, uline_atc::{AtcBrakeStatus, ULineATC}};
 
@@ -11,7 +11,7 @@ fn get_none_brake_handle(atc: &ULineATC) -> AtsHandles {
 		brake: atc.man_brake,
 		power: atc.man_power, 
 		reverser: atc.man_reverser, 
-		constant_speed: 0 
+		constant_speed: AtsConstantSpeed::Continue
 	}
 }
 /// ATC緩和ブレーキ状態のAtsHandlesを取得
@@ -20,7 +20,7 @@ fn get_half_brake_handle(atc: &ULineATC) -> AtsHandles {
 		brake: 4,
 		power: 0,
 		reverser: atc.man_reverser,
-		constant_speed: 0
+		constant_speed: AtsConstantSpeed::Continue
 	}
 }
 /// ATC常用ブレーキ状態のAtsHandlesを取得
@@ -29,7 +29,7 @@ fn get_full_brake_handle(atc: &ULineATC) -> AtsHandles {
 		brake: atc.vehicle_spec.brake_notches,
 		power: 0,
 		reverser: atc.man_reverser,
-		constant_speed: 0
+		constant_speed: AtsConstantSpeed::Continue
 	}
 }
 /// ATC非常ブレーキ状態のAtsHandlesを取得
@@ -38,7 +38,7 @@ fn get_emg_brake_handle(atc: &ULineATC) -> AtsHandles {
 		brake: atc.vehicle_spec.brake_notches + 1,
 		power: 0,
 		reverser: atc.man_reverser,
-		constant_speed: 0
+		constant_speed: AtsConstantSpeed::Continue
 	}
 }
 
