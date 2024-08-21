@@ -5,6 +5,18 @@ use super::{atc_signal::AtcSignal, uline_atc::{AtcBrakeStatus, ULineATC}};
 const ATS_SOUND_BELL: usize = 2;
 const ATS_SOUND_BUZZER: usize = 3;
 
+fn convert_holding_speed<'a>(atc: &'a ULineATC, handles: &'a mut AtsHandles) -> &'a AtsHandles {
+	println!("is_holding_control: {}", atc.is_holding_control);
+	if atc.is_holding_control {
+		handles.constant_speed = AtsConstantSpeed::Enable;
+	}
+	if atc.man_power < 0 && atc.speed <= 25.0 {
+		handles.brake = handles.power.abs();
+		handles.power = 0;
+	}
+	handles
+}
+
 fn get_constant_speed(enable: bool) -> AtsConstantSpeed {
 	if enable { 
 		AtsConstantSpeed::Enable 
@@ -22,39 +34,39 @@ fn get_reverser(atc: &ULineATC) -> i32 {
 
 /// ATCブレーキなし状態のAtsHandlesを取得
 fn get_none_brake_handle(atc: &ULineATC) -> AtsHandles {
-	AtsHandles { 
+	*convert_holding_speed(&atc,&mut AtsHandles { 
 		brake: atc.man_brake,
 		power: atc.man_power, 
 		reverser: get_reverser(atc), 
 		constant_speed: get_constant_speed(atc.is_constant_control)
-	}
+	})
 }
 /// ATC緩和ブレーキ状態のAtsHandlesを取得
 fn get_half_brake_handle(atc: &ULineATC) -> AtsHandles {
-	AtsHandles {
+	*convert_holding_speed(&atc, &mut AtsHandles {
 		brake: 4,
 		power: 0,
 		reverser: get_reverser(atc),
 		constant_speed: get_constant_speed(atc.is_constant_control)
-	}
+	})
 }
 /// ATC常用ブレーキ状態のAtsHandlesを取得
 fn get_full_brake_handle(atc: &ULineATC) -> AtsHandles {
-	AtsHandles {
+	*convert_holding_speed(&atc, &mut AtsHandles {
 		brake: atc.vehicle_spec.brake_notches,
 		power: 0,
 		reverser: get_reverser(atc),
 		constant_speed: get_constant_speed(atc.is_constant_control)
-	}
+	})
 }
 /// ATC非常ブレーキ状態のAtsHandlesを取得
 fn get_emg_brake_handle(atc: &ULineATC) -> AtsHandles {
-	AtsHandles {
+	*convert_holding_speed(&atc, &mut AtsHandles {
 		brake: atc.vehicle_spec.brake_notches + 1,
 		power: 0,
 		reverser: get_reverser(atc),
 		constant_speed: get_constant_speed(atc.is_constant_control)
-	}
+	})
 }
 
 pub fn elapse_atc_brake(atc: &mut ULineATC, state: AtsVehicleState, sound: &mut [i32]) -> AtsHandles {
@@ -115,25 +127,19 @@ pub fn elapse_atc_brake(atc: &mut ULineATC, state: AtsVehicleState, sound: &mut 
 				atc.atc_brake_status = AtcBrakeStatus::FullBraking;
 			}
 		} else {
-			atc.atc_brake_status = AtcBrakeStatus::EmergencyBraking;
-			if state.speed as i32 == 0 {
-				atc.enable_02hijo_unten = false;
-			}
+			atc.enable_02hijo_unten = false;
 		}
 	}
 	// 確認運転の場合
 	if atc.enable_01kakunin_unten {
 		if atc.now_signal == AtcSignal::Signal01 {
-			if state.speed as i32 <= 15 {
+			if state.speed as i32 <= 25 {
 				atc.atc_brake_status = AtcBrakeStatus::Passing;
 			} else {
 				atc.atc_brake_status = AtcBrakeStatus::FullBraking;
 			}
 		} else {
-			atc.atc_brake_status = AtcBrakeStatus::EmergencyBraking;
-			if state.speed as i32 == 0 {
-				atc.enable_01kakunin_unten = false;
-			}
+			atc.enable_01kakunin_unten = false;
 		}
 	}
 

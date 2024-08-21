@@ -161,7 +161,7 @@ pub struct ULineATC {
     /// TIMS
     tims: TIMS,
     /// TIMS用のパネル配列 (ラグ対応用)
-    tims_panel: [i32; ELAPSE_PANEL_SIZE],
+    tims_panel: Box<[i32; ELAPSE_PANEL_SIZE]>,
 
     /// ATCの状態
     pub atc_status: AtcStatus,
@@ -173,10 +173,12 @@ pub struct ULineATC {
 
     /// 現在定速制御中か
     pub is_constant_control: bool,
+    /// 現在抑速制御中か
+    pub is_holding_control: bool,
 }
 
 impl ULineATC {
-    fn elapse_display(&mut self, _state: AtsVehicleState, panel: &mut [i32], handles: &AtsHandles) {
+    fn elapse_display(&mut self, _state: AtsVehicleState, _panel: &mut [i32], handles: &AtsHandles) {
         for i in 31..=38 { self.tims_panel[i] = 0; }
         match self.now_signal {
             AtcSignal::Signal02 => self.tims_panel[31] = 1,
@@ -216,7 +218,7 @@ impl ULineATC {
             sound[106] = AtsSound::Continue as i32;
         }
     }
-    fn show_atc_status(&mut self, panel: &mut [i32]) {
+    fn show_atc_status(&mut self, _panel: &mut [i32]) {
         for i in 42..=45 { self.tims_panel[i] = 0; }
         match self.atc_status {
             AtcStatus::Hisetsu => self.tims_panel[42] = 1,
@@ -274,7 +276,8 @@ impl BveAts for ULineATC {
     }
     fn set_power(&mut self, notch: i32) {
         println!("SetPower: {:?}", notch);
-        self.is_constant_control = self.man_power == 4 && notch == 3;
+        self.is_constant_control = self.man_power == 4 && notch == 3 && self.speed >= 15.0;
+        self.is_holding_control = self.man_power == -2 && notch == -1 && self.speed >= 25.0;
         self.man_power = notch;
         self.tims.set_power(notch);
     }
@@ -444,7 +447,8 @@ impl Default for ULineATC {
             speed: 0.0,
             is_emg_brake_sound: false,
             is_constant_control: false,
-            tims_panel: [0; ELAPSE_PANEL_SIZE],
+            is_holding_control: false,
+            tims_panel: Box::new([0; ELAPSE_PANEL_SIZE]),
         }
     }
 }

@@ -7,6 +7,7 @@ pub const ATS_VERSION: i32 = 0x00020000;
 #[repr(i32)]
 #[derive(Debug)]
 #[derive(Clone, Copy)]
+#[derive(PartialEq)]
 pub enum AtsKey {
     /// S ボタン (デフォルト Space)
     S = 0,
@@ -46,6 +47,7 @@ pub enum AtsKey {
 #[repr(i32)]
 #[derive(Debug)]
 #[derive(Clone, Copy)]
+#[derive(PartialEq)]
 pub enum AtsInit {
     /// 抜き取り (通常、保安装置未投入)
     Removed = 2,
@@ -59,6 +61,7 @@ pub enum AtsInit {
 #[repr(i32)]
 #[derive(Debug)]
 #[derive(Clone, Copy)]
+#[derive(PartialEq)]
 pub enum AtsSound {
     /// 停止
     Stop = -10000,
@@ -74,6 +77,7 @@ pub enum AtsSound {
 #[repr(i32)]
 #[derive(Debug)]
 #[derive(Clone, Copy)]
+#[derive(PartialEq)]
 pub enum AtsHorn {
     /// 警笛1
     Primary = 0,
@@ -87,6 +91,7 @@ pub enum AtsHorn {
 #[repr(i32)]
 #[derive(Debug)]
 #[derive(Clone, Copy)]
+#[derive(PartialEq)]
 pub enum AtsConstantSpeed {
     /// 現在の状態を維持する
     Continue = 0,
