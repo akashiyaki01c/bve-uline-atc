@@ -5,13 +5,28 @@ use super::{atc_signal::AtcSignal, uline_atc::{AtcBrakeStatus, ULineATC}};
 const ATS_SOUND_BELL: usize = 2;
 const ATS_SOUND_BUZZER: usize = 3;
 
+fn get_constant_speed(enable: bool) -> AtsConstantSpeed {
+	if enable { 
+		AtsConstantSpeed::Enable 
+	} else { 
+		AtsConstantSpeed::Disable 
+	}
+}
+fn get_reverser(atc: &ULineATC) -> i32 {
+	if atc.man_power < 0 && atc.speed < 25.0 {
+		0
+	} else {
+		1
+	}
+}
+
 /// ATCブレーキなし状態のAtsHandlesを取得
 fn get_none_brake_handle(atc: &ULineATC) -> AtsHandles {
 	AtsHandles { 
 		brake: atc.man_brake,
 		power: atc.man_power, 
-		reverser: atc.man_reverser, 
-		constant_speed: AtsConstantSpeed::Continue
+		reverser: get_reverser(atc), 
+		constant_speed: get_constant_speed(atc.is_constant_control)
 	}
 }
 /// ATC緩和ブレーキ状態のAtsHandlesを取得
@@ -19,8 +34,8 @@ fn get_half_brake_handle(atc: &ULineATC) -> AtsHandles {
 	AtsHandles {
 		brake: 4,
 		power: 0,
-		reverser: atc.man_reverser,
-		constant_speed: AtsConstantSpeed::Continue
+		reverser: get_reverser(atc),
+		constant_speed: get_constant_speed(atc.is_constant_control)
 	}
 }
 /// ATC常用ブレーキ状態のAtsHandlesを取得
@@ -28,8 +43,8 @@ fn get_full_brake_handle(atc: &ULineATC) -> AtsHandles {
 	AtsHandles {
 		brake: atc.vehicle_spec.brake_notches,
 		power: 0,
-		reverser: atc.man_reverser,
-		constant_speed: AtsConstantSpeed::Continue
+		reverser: get_reverser(atc),
+		constant_speed: get_constant_speed(atc.is_constant_control)
 	}
 }
 /// ATC非常ブレーキ状態のAtsHandlesを取得
@@ -37,8 +52,8 @@ fn get_emg_brake_handle(atc: &ULineATC) -> AtsHandles {
 	AtsHandles {
 		brake: atc.vehicle_spec.brake_notches + 1,
 		power: 0,
-		reverser: atc.man_reverser,
-		constant_speed: AtsConstantSpeed::Continue
+		reverser: get_reverser(atc),
+		constant_speed: get_constant_speed(atc.is_constant_control)
 	}
 }
 
@@ -48,7 +63,7 @@ pub fn elapse_atc_brake(atc: &mut ULineATC, state: AtsVehicleState, sound: &mut 
 	let atc_full_brake_handle = get_full_brake_handle(atc);
 	let atc_emg_brake_handle = get_emg_brake_handle(atc);
 
-	let enable_auto_brake = state.speed as i32 > atc.now_signal.getSpeed();
+	let enable_auto_brake = state.speed as i32 >= atc.now_signal.getSpeed();
 	// ブレーキが掛かった瞬間
 	if atc.atc_brake_status == AtcBrakeStatus::Passing && enable_auto_brake {
 		println!("[Brake] Passing -> StartHalfBraking");

@@ -26,6 +26,8 @@ const BRAKE_PATTERN: [[i32; 9]; 9] = [
     [0, 1, 1, 1, 1, 1, 1, 1, 0], // ブレーキ7ノッチ
     [0, 1, 1, 1, 1, 1, 1, 1, 1], // 非常ブレーキ
 ];
+/// panelのサイズ
+const ELAPSE_PANEL_SIZE: usize = 256;
 
 /// 現在のATCブレーキ種別
 #[allow(dead_code)]
@@ -152,11 +154,15 @@ pub struct ULineATC {
     /// 確認運転が有効になっているか
     pub enable_01kakunin_unten: bool,
 
-    time: i32,
-    speed: f32,
+    // Natives
+    pub time: i32,
+    pub speed: f32,
 
     /// TIMS
     tims: TIMS,
+    /// TIMS用のパネル配列 (ラグ対応用)
+    tims_panel: [i32; ELAPSE_PANEL_SIZE],
+
     /// ATCの状態
     pub atc_status: AtcStatus,
     
@@ -164,30 +170,34 @@ pub struct ULineATC {
     emg_sound: EmgSound,
     emg_sound_keydown: EmgSoundKeyDown,
     is_emg_brake_sound: bool,
+
+    /// 現在定速制御中か
+    pub is_constant_control: bool,
 }
 
 impl ULineATC {
     fn elapse_display(&mut self, _state: AtsVehicleState, panel: &mut [i32], handles: &AtsHandles) {
-        for i in 31..=38 { panel[i] = 0; }
+        for i in 31..=38 { self.tims_panel[i] = 0; }
         match self.now_signal {
-            AtcSignal::Signal02 => panel[31] = 1,
-            AtcSignal::Signal01 => panel[32] = 1,
-            AtcSignal::Signal15 => panel[33] = 1,
-            AtcSignal::Signal25 => panel[34] = 1,
-            AtcSignal::Signal45 => panel[35] = 1,
-            AtcSignal::Signal60 => panel[36] = 1,
-            AtcSignal::Signal75 => panel[37] = 1,
-            AtcSignal::Signal90 => panel[38] = 1,
+            AtcSignal::Signal02 => self.tims_panel[31] = 1,
+            AtcSignal::Signal01 => self.tims_panel[32] = 1,
+            AtcSignal::Signal15 => self.tims_panel[33] = 1,
+            AtcSignal::Signal25 => self.tims_panel[34] = 1,
+            AtcSignal::Signal45 => self.tims_panel[35] = 1,
+            AtcSignal::Signal60 => self.tims_panel[36] = 1,
+            AtcSignal::Signal75 => self.tims_panel[37] = 1,
+            AtcSignal::Signal90 => self.tims_panel[38] = 1,
             _ => {}
         }
         for i in 0..8 {
-            panel[11+i] = POWER_PATTERN[(handles.power as usize)+3][i];
+            self.tims_panel[11+i] = POWER_PATTERN[(handles.power as usize)+3][i];
         }
         for i in 0..9 {
-            panel[21+i] = BRAKE_PATTERN[handles.brake as usize][i];
+            self.tims_panel[21+i] = BRAKE_PATTERN[handles.brake as usize][i];
         }
-        panel[40] = if self.enable_02hijo_unten { 1 } else { 0 };
-        panel[41] = if self.enable_01kakunin_unten { 1 } else { 0 };
+        self.tims_panel[40] = if self.enable_02hijo_unten { 1 } else { 0 };
+        self.tims_panel[41] = if self.enable_01kakunin_unten { 1 } else { 0 };
+        self.tims_panel[19] = self.is_constant_control as i32;
     }
     fn elapse_emg_sound(&mut self, sound: &mut [i32]) {
         for i in 101..=105 { sound[i] = AtsSound::Continue as i32; }
@@ -207,12 +217,12 @@ impl ULineATC {
         }
     }
     fn show_atc_status(&mut self, panel: &mut [i32]) {
-        for i in 42..=45 { panel[i] = 0; }
+        for i in 42..=45 { self.tims_panel[i] = 0; }
         match self.atc_status {
-            AtcStatus::Hisetsu => panel[42] = 1,
-            AtcStatus::Irekae => panel[43] = 1,
-            AtcStatus::ATC => panel[44] = 1,
-            AtcStatus::ATO => panel[45] = 1,
+            AtcStatus::Hisetsu => self.tims_panel[42] = 1,
+            AtcStatus::Irekae => self.tims_panel[43] = 1,
+            AtcStatus::ATC => self.tims_panel[44] = 1,
+            AtcStatus::ATO => self.tims_panel[45] = 1,
         }
     }
 }
@@ -254,10 +264,17 @@ impl BveAts for ULineATC {
             AtcStatus::Hisetsu => elapse_hisetsu_brake(self, state, sound)
         };
         self.elapse_display(state, panel, &handles);
+
+        for i in 0..(panel.len().min(self.tims_panel.len())) {
+            if i < ELAPSE_PANEL_SIZE {
+                panel[i] = self.tims_panel[i];
+            }
+        }
         handles
     }
     fn set_power(&mut self, notch: i32) {
         println!("SetPower: {:?}", notch);
+        self.is_constant_control = self.man_power == 4 && notch == 3;
         self.man_power = notch;
         self.tims.set_power(notch);
     }
@@ -425,7 +442,9 @@ impl Default for ULineATC {
             emg_sound_keydown: EmgSoundKeyDown::default(),
             time: 0,
             speed: 0.0,
-            is_emg_brake_sound: false
+            is_emg_brake_sound: false,
+            is_constant_control: false,
+            tims_panel: [0; ELAPSE_PANEL_SIZE],
         }
     }
 }
