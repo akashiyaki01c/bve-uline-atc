@@ -1,7 +1,7 @@
 use ::bveats_rs::*;
-use crate::{atc::{atc_signal::*, auto_brake::{elapse_hisetsu_brake, elapse_irekae_brake}}, tims::TIMS};
+use crate::{atc::{atc_signal::*, auto_brake::elapse_hisetsu_brake, speed_control::{is_constant_speed, is_holding_speed}}, tims::TIMS};
 
-use super::auto_brake::elapse_atc_brake;
+use super::{auto_brake::elapse_atc_brake, speed_control::{constant_and_holding_speed, is_air_holding_speed}};
 
 /// TIMS 力行表示パターン
 const POWER_PATTERN: [[i32; 8]; 8] = [
@@ -32,6 +32,7 @@ const ELAPSE_PANEL_SIZE: usize = 256;
 /// 現在のATCブレーキ種別
 #[allow(dead_code)]
 #[derive(PartialEq, Debug)]
+#[derive(Clone, Copy)]
 pub enum AtcBrakeStatus {
     /// ATCブレーキ制御なし
     Passing,
@@ -51,6 +52,7 @@ impl Default for AtcBrakeStatus {
 /// 現在のATC種別
 #[allow(dead_code)]
 #[derive(PartialEq, Debug)]
+#[derive(Clone, Copy)]
 pub enum AtcStatus {
     /// ATO制御
     ATO,
@@ -259,25 +261,53 @@ impl BveAts for ULineATC {
         self.elapse_emg_sound(sound);
         self.tims.elapse(state, panel, sound);
 
-        let handles = match self.atc_status {
-            AtcStatus::ATO => elapse_atc_brake(self, state, sound),
-            AtcStatus::ATC => elapse_atc_brake(self, state, sound),
-            AtcStatus::Irekae => elapse_irekae_brake(self, state, sound),
-            AtcStatus::Hisetsu => elapse_hisetsu_brake(self, state, sound)
+        // デフォルトのAtsHandles
+        let default_handles = AtsHandles {
+            brake: self.man_brake,
+            power: self.man_power,
+            reverser: self.man_reverser,
+            constant_speed: AtsConstantSpeed::Continue
         };
-        self.elapse_display(state, panel, &handles);
+        // TIMS表示用のAtsHandles (擬似空制抑速を適用しない)
+        let display_handles = constant_and_holding_speed(
+            default_handles, 
+            self.is_constant_control, 
+            self.is_holding_control, 
+            false);
+        // BVE制御用のAtsHandles
+        let control_handles = constant_and_holding_speed(
+            default_handles, 
+            self.is_constant_control, 
+            self.is_holding_control, 
+            is_air_holding_speed(self.speed, self.man_power));
 
+        let display_handles = match self.atc_status {
+            AtcStatus::ATO => elapse_atc_brake(self, display_handles.clone(), state, sound),
+            AtcStatus::ATC => elapse_atc_brake(self, display_handles.clone(), state, sound),
+            AtcStatus::Irekae => elapse_atc_brake(self, display_handles.clone(), state, sound),
+            AtcStatus::Hisetsu => elapse_hisetsu_brake(self, display_handles.clone())
+        };
+        let control_handles = match self.atc_status {
+            AtcStatus::ATO => elapse_atc_brake(self, control_handles.clone(), state, sound),
+            AtcStatus::ATC => elapse_atc_brake(self, control_handles.clone(), state, sound),
+            AtcStatus::Irekae => elapse_atc_brake(self, control_handles.clone(), state, sound),
+            AtcStatus::Hisetsu => elapse_hisetsu_brake(self, control_handles.clone())
+        };
+
+        self.elapse_display(state, panel, &display_handles);
+
+        // タイムラグ用
         for i in 0..(panel.len().min(self.tims_panel.len())) {
             if i < ELAPSE_PANEL_SIZE {
                 panel[i] = self.tims_panel[i];
             }
         }
-        handles
+        control_handles.clone()
     }
     fn set_power(&mut self, notch: i32) {
         println!("SetPower: {:?}", notch);
-        self.is_constant_control = self.man_power == 4 && notch == 3 && self.speed >= 15.0;
-        self.is_holding_control = self.man_power == -2 && notch == -1 && self.speed >= 25.0;
+        self.is_constant_control = is_constant_speed(self.speed, self.man_power, notch);
+        self.is_holding_control = is_holding_speed(self.speed, self.man_power, notch);
         self.man_power = notch;
         self.tims.set_power(notch);
     }

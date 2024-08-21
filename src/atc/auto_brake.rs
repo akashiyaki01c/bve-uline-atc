@@ -1,81 +1,39 @@
-use bveats_rs::{AtsConstantSpeed, AtsHandles, AtsSound, AtsVehicleState};
+use bveats_rs::{AtsHandles, AtsSound, AtsVehicleState};
 
 use super::{atc_signal::AtcSignal, uline_atc::{AtcBrakeStatus, ULineATC}};
 
 const ATS_SOUND_BELL: usize = 2;
 const ATS_SOUND_BUZZER: usize = 3;
 
-fn convert_holding_speed<'a>(atc: &'a ULineATC, handles: &'a mut AtsHandles) -> &'a AtsHandles {
-	println!("is_holding_control: {}", atc.is_holding_control);
-	if atc.is_holding_control {
-		handles.constant_speed = AtsConstantSpeed::Enable;
-	}
-	if atc.man_power < 0 && atc.speed <= 25.0 {
-		handles.brake = handles.power.abs();
-		handles.power = 0;
-	}
+/// ATCブレーキなし状態のAtsHandlesを取得
+fn get_none_brake_handle<'a>(_atc: &'a ULineATC, handles: AtsHandles) -> AtsHandles {
+	handles
+}
+/// ATC緩和ブレーキ状態のAtsHandlesを取得
+fn get_half_brake_handle<'a>(_atc: &'a ULineATC, mut handles: AtsHandles) -> AtsHandles {
+	handles.brake = 4;
+	handles
+}
+/// ATC常用ブレーキ状態のAtsHandlesを取得
+fn get_full_brake_handle<'a>(atc: &'a ULineATC, mut handles: AtsHandles) -> AtsHandles {
+	handles.brake = atc.vehicle_spec.brake_notches;
+	handles
+}
+/// ATC非常ブレーキ状態のAtsHandlesを取得
+fn get_emg_brake_handle<'a>(atc: &'a ULineATC, mut handles: AtsHandles) -> AtsHandles {
+	handles.brake = atc.vehicle_spec.brake_notches + 1;
 	handles
 }
 
-fn get_constant_speed(enable: bool) -> AtsConstantSpeed {
-	if enable { 
-		AtsConstantSpeed::Enable 
-	} else { 
-		AtsConstantSpeed::Disable 
-	}
-}
-fn get_reverser(atc: &ULineATC) -> i32 {
-	if atc.man_power < 0 && atc.speed < 25.0 {
-		0
-	} else {
-		1
-	}
+/// ATCブレーキが有効かを判断する関数
+fn enable_atc_brake(signal_speed: i32, vehicle_speed: i32) -> bool {
+	signal_speed <= vehicle_speed
 }
 
-/// ATCブレーキなし状態のAtsHandlesを取得
-fn get_none_brake_handle(atc: &ULineATC) -> AtsHandles {
-	*convert_holding_speed(&atc,&mut AtsHandles { 
-		brake: atc.man_brake,
-		power: atc.man_power, 
-		reverser: get_reverser(atc), 
-		constant_speed: get_constant_speed(atc.is_constant_control)
-	})
-}
-/// ATC緩和ブレーキ状態のAtsHandlesを取得
-fn get_half_brake_handle(atc: &ULineATC) -> AtsHandles {
-	*convert_holding_speed(&atc, &mut AtsHandles {
-		brake: 4,
-		power: 0,
-		reverser: get_reverser(atc),
-		constant_speed: get_constant_speed(atc.is_constant_control)
-	})
-}
-/// ATC常用ブレーキ状態のAtsHandlesを取得
-fn get_full_brake_handle(atc: &ULineATC) -> AtsHandles {
-	*convert_holding_speed(&atc, &mut AtsHandles {
-		brake: atc.vehicle_spec.brake_notches,
-		power: 0,
-		reverser: get_reverser(atc),
-		constant_speed: get_constant_speed(atc.is_constant_control)
-	})
-}
-/// ATC非常ブレーキ状態のAtsHandlesを取得
-fn get_emg_brake_handle(atc: &ULineATC) -> AtsHandles {
-	*convert_holding_speed(&atc, &mut AtsHandles {
-		brake: atc.vehicle_spec.brake_notches + 1,
-		power: 0,
-		reverser: get_reverser(atc),
-		constant_speed: get_constant_speed(atc.is_constant_control)
-	})
-}
+/// ATC有効時にElapse内のATCブレーキ判定を行う関数
+pub fn elapse_atc_brake<'a>(atc: &'a mut ULineATC, handles: AtsHandles, state: AtsVehicleState, sound: &'a mut [i32]) -> AtsHandles {
 
-pub fn elapse_atc_brake(atc: &mut ULineATC, state: AtsVehicleState, sound: &mut [i32]) -> AtsHandles {
-	let atc_none_brake_handle = get_none_brake_handle(atc);
-	let atc_half_brake_handle =  get_half_brake_handle(atc);
-	let atc_full_brake_handle = get_full_brake_handle(atc);
-	let atc_emg_brake_handle = get_emg_brake_handle(atc);
-
-	let enable_auto_brake = state.speed as i32 >= atc.now_signal.getSpeed();
+	let enable_auto_brake = enable_atc_brake(atc.now_signal.getSpeed(), state.speed as i32);
 	// ブレーキが掛かった瞬間
 	if atc.atc_brake_status == AtcBrakeStatus::Passing && enable_auto_brake {
 		println!("[Brake] Passing -> StartHalfBraking");
@@ -154,26 +112,14 @@ pub fn elapse_atc_brake(atc: &mut ULineATC, state: AtsVehicleState, sound: &mut 
 	}
 
 	match atc.atc_brake_status {
-		AtcBrakeStatus::EmergencyBraking => atc_emg_brake_handle,
-		AtcBrakeStatus::HalfBraking(_) => atc_half_brake_handle,
-		AtcBrakeStatus::FullBraking => atc_full_brake_handle,
-		AtcBrakeStatus::Passing => atc_none_brake_handle,
+		AtcBrakeStatus::EmergencyBraking => get_emg_brake_handle(atc, handles),
+		AtcBrakeStatus::HalfBraking(_) => get_half_brake_handle(atc, handles),
+		AtcBrakeStatus::FullBraking => get_full_brake_handle(atc, handles),
+		AtcBrakeStatus::Passing => get_none_brake_handle(atc, handles),
 	}
 }
 
-pub fn elapse_irekae_brake(atc: &mut ULineATC, state: AtsVehicleState, _sound: &mut [i32]) -> AtsHandles {
-	let atc_none_brake_handle = get_none_brake_handle(atc);
-	let atc_full_brake_handle = get_full_brake_handle(atc);
-
-	let atc_signal_speed = atc.now_signal.getSpeed();
-	if atc_signal_speed < (state.speed as i32).min(25) {
-		atc_full_brake_handle
-	} else {
-		atc_none_brake_handle
-	}
-}
-
-pub fn elapse_hisetsu_brake(atc: &mut ULineATC, _state: AtsVehicleState, _sound: &mut [i32]) -> AtsHandles {
-	let atc_none_brake_handle = get_none_brake_handle(atc);
-	atc_none_brake_handle
+/// ATC非設時にElapse内のATCブレーキ判定を行う関数
+pub fn elapse_hisetsu_brake<'a>(_atc: &'a mut ULineATC, handles: AtsHandles) -> AtsHandles {
+	handles
 }
