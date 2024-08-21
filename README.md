@@ -1,4 +1,4 @@
-# BveKobeCitySubwayAts
+# BveKobeCitySubwayAtc
 神戸市営地下鉄西神・山手線のATC再現プラグインです。
 
 ## ドキュメント類
