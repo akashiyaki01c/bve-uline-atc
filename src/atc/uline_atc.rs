@@ -164,6 +164,7 @@ pub struct ULineATC {
     tims: TIMS,
     /// TIMS用のパネル配列 (ラグ対応用)
     tims_panel: Box<[i32; ELAPSE_PANEL_SIZE]>,
+    tims_panel_updated_time: i32,
 
     /// ATCの状態
     pub atc_status: AtcStatus,
@@ -180,7 +181,7 @@ pub struct ULineATC {
 }
 
 impl ULineATC {
-    fn elapse_display(&mut self, _state: AtsVehicleState, _panel: &mut [i32], handles: &AtsHandles) {
+    fn elapse_display(&mut self, _state: AtsVehicleState, handles: &AtsHandles) {
         for i in 31..=38 { self.tims_panel[i] = 0; }
         match self.now_signal {
             AtcSignal::Signal02 => self.tims_panel[31] = 1,
@@ -302,12 +303,13 @@ impl BveAts for ULineATC {
         } else {
             sound[2] = AtsSound::Continue as i32;
         }
-        self.elapse_display(state, panel, &display_handles);
-        self.tims.elapse(state, panel, sound);
+        self.elapse_display(state, &display_handles);
+        self.tims.elapse(state, &mut (*self.tims_panel).as_mut_slice(), sound);
 
         // タイムラグ用
-        for i in 0..(panel.len().min(self.tims_panel.len())) {
-            if i < ELAPSE_PANEL_SIZE {
+        if self.tims_panel_updated_time + 250 < state.time {
+            self.tims_panel_updated_time = state.time;
+            for i in 0..(panel.len().min(self.tims_panel.len())) {
                 panel[i] = self.tims_panel[i];
             }
         }
@@ -489,6 +491,7 @@ impl Default for ULineATC {
             is_constant_control: false,
             is_holding_control: false,
             tims_panel: Box::new([0; ELAPSE_PANEL_SIZE]),
+            tims_panel_updated_time: 0,
         }
     }
 }

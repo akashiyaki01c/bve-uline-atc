@@ -166,6 +166,9 @@ impl TIMS {
 		_panel[111] = seconds / 10;
 		_panel[112] = seconds % 10;
 
+        _panel[113] = (_state.speed / 10.0 % 10.0) as i32;
+        _panel[114] = (_state.speed % 10.0) as i32;
+
         _panel[116] = self.position.get_tims_distance_prefix();
         let distance = self.position.get_tims_distance(_state.location as f32, self.is_position_negative).abs() as i32;
         _panel[117] = distance / 10000 % 10;
