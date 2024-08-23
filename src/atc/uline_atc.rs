@@ -202,6 +202,7 @@ impl ULineATC {
         self.tims_panel[40] = if self.enable_02hijo_unten { 1 } else { 0 };
         self.tims_panel[41] = if self.enable_01kakunin_unten { 1 } else { 0 };
         self.tims_panel[19] = self.is_constant_control as i32;
+        self.tims_panel[20] = self.is_holding_control as i32;
     }
     fn elapse_emg_sound(&mut self, sound: &mut [i32]) {
         for i in 101..=105 { sound[i] = AtsSound::Continue as i32; }
@@ -259,7 +260,6 @@ impl BveAts for ULineATC {
         self.speed = state.speed;
         self.show_atc_status(panel);
         self.elapse_emg_sound(sound);
-        self.tims.elapse(state, panel, sound);
 
         // デフォルトのAtsHandles
         let default_handles = AtsHandles {
@@ -271,8 +271,8 @@ impl BveAts for ULineATC {
         // TIMS表示用のAtsHandles (擬似空制抑速を適用しない)
         let display_handles = constant_and_holding_speed(
             default_handles, 
-            self.is_constant_control, 
-            self.is_holding_control, 
+            false, 
+            false, 
             false);
         // BVE制御用のAtsHandles
         let control_handles = constant_and_holding_speed(
@@ -294,7 +294,16 @@ impl BveAts for ULineATC {
             AtcStatus::Hisetsu => elapse_hisetsu_brake(self, control_handles.clone())
         };
 
+        // ATC音関連
+        if self.is_changing_signal {
+            println!("ATC変化ベル鳴らすが？");
+            sound[2] = AtsSound::Play as i32;
+            self.is_changing_signal = false;
+        } else {
+            sound[2] = AtsSound::Continue as i32;
+        }
         self.elapse_display(state, panel, &display_handles);
+        self.tims.elapse(state, panel, sound);
 
         // タイムラグ用
         for i in 0..(panel.len().min(self.tims_panel.len())) {
@@ -302,7 +311,8 @@ impl BveAts for ULineATC {
                 panel[i] = self.tims_panel[i];
             }
         }
-        control_handles.clone()
+        
+        control_handles
     }
     fn set_power(&mut self, notch: i32) {
         println!("SetPower: {:?}", notch);

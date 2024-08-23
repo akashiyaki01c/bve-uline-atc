@@ -1,4 +1,4 @@
-use bveats_rs::{AtsHandles, AtsSound, AtsVehicleState};
+use bveats_rs::{AtsConstantSpeed, AtsHandles, AtsSound, AtsVehicleState};
 
 use super::{atc_signal::AtcSignal, uline_atc::{AtcBrakeStatus, ULineATC}};
 
@@ -12,16 +12,19 @@ fn get_none_brake_handle<'a>(_atc: &'a ULineATC, handles: AtsHandles) -> AtsHand
 /// ATC緩和ブレーキ状態のAtsHandlesを取得
 fn get_half_brake_handle<'a>(_atc: &'a ULineATC, mut handles: AtsHandles) -> AtsHandles {
 	handles.brake = 4;
+	handles.constant_speed = AtsConstantSpeed::Disable;
 	handles
 }
 /// ATC常用ブレーキ状態のAtsHandlesを取得
 fn get_full_brake_handle<'a>(atc: &'a ULineATC, mut handles: AtsHandles) -> AtsHandles {
 	handles.brake = atc.vehicle_spec.brake_notches;
+	handles.constant_speed = AtsConstantSpeed::Disable;
 	handles
 }
 /// ATC非常ブレーキ状態のAtsHandlesを取得
 fn get_emg_brake_handle<'a>(atc: &'a ULineATC, mut handles: AtsHandles) -> AtsHandles {
 	handles.brake = atc.vehicle_spec.brake_notches + 1;
+	handles.constant_speed = AtsConstantSpeed::Disable;
 	handles
 }
 
@@ -68,14 +71,6 @@ pub fn elapse_atc_brake<'a>(atc: &'a mut ULineATC, handles: AtsHandles, state: A
 		atc.atc_brake_status = AtcBrakeStatus::EmergencyBraking;
 	}
 
-	// ATC音関連
-	if atc.is_changing_signal {
-		sound[ATS_SOUND_BELL] = AtsSound::Play as i32;
-		atc.is_changing_signal = false;
-	} else {
-		sound[ATS_SOUND_BELL] = AtsSound::Continue as i32;
-	}
-
 	// 非常運転の場合
 	if atc.enable_02hijo_unten {
 		if atc.now_signal == AtcSignal::Signal02 {
@@ -110,7 +105,6 @@ pub fn elapse_atc_brake<'a>(atc: &'a mut ULineATC, handles: AtsHandles, state: A
 			sound[ATS_SOUND_BUZZER] = AtsSound::PlayLooping as i32;
 		}
 	}
-
 	match atc.atc_brake_status {
 		AtcBrakeStatus::EmergencyBraking => get_emg_brake_handle(atc, handles),
 		AtcBrakeStatus::HalfBraking(_) => get_half_brake_handle(atc, handles),
