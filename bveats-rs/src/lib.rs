@@ -224,7 +224,7 @@ macro_rules! ats_main {
         static ATS: OnceLock<Mutex<$t>> = OnceLock::new();
 
         #[no_mangle]
-        pub unsafe extern "C" fn Load() {
+        pub unsafe extern "system" fn Load() {
             ATS .get_or_init(|| Mutex::new(<$t>::default()))
                 .lock()
                 .expect("Mutex error: at Load()")
@@ -232,7 +232,7 @@ macro_rules! ats_main {
         }
 
         #[no_mangle]
-        pub unsafe extern "C" fn Dispose() {
+        pub unsafe extern "system" fn Dispose() {
             ATS .get()
                 .expect("OnceLock error: at Dispose()")
                 .lock()
@@ -241,7 +241,7 @@ macro_rules! ats_main {
         }
 
         #[no_mangle]
-        pub unsafe extern "C" fn GetPluginVersion() -> i32 {
+        pub unsafe extern "system" fn GetPluginVersion() -> i32 {
             ATS .get()
                 .expect("OnceLock error: at GetPluginVersion()")
                 .lock()
@@ -250,7 +250,7 @@ macro_rules! ats_main {
         }
 
         #[no_mangle]
-        pub unsafe extern "C" fn SetVehicleSpec(spec: AtsVehicleSpec) {
+        pub unsafe extern "system" fn SetVehicleSpec(spec: AtsVehicleSpec) {
             ATS .get()
                 .expect("OnceLock error: at SetVehicleSpec()")
                 .lock()
@@ -259,7 +259,7 @@ macro_rules! ats_main {
         }
 
         #[no_mangle]
-        pub unsafe extern "C" fn Initialize(brake: i32) {
+        pub unsafe extern "system" fn Initialize(brake: i32) {
             println!("{}", brake);
             ATS .get()
                 .expect("OnceLock error: at Initialize()")
@@ -269,7 +269,7 @@ macro_rules! ats_main {
         }
 
         #[no_mangle]
-        pub unsafe extern "C" fn Elapse(state: AtsVehicleState, panel: *mut i32, sound: *mut i32) -> AtsHandles {
+        pub unsafe extern "system" fn Elapse(state: AtsVehicleState, panel: *mut i32, sound: *mut i32) -> AtsHandles {
             ATS .get()
                 .expect("OnceLock error: at Elapse()")
                 .lock()
@@ -280,7 +280,7 @@ macro_rules! ats_main {
         }
 
         #[no_mangle]
-        pub unsafe extern "C" fn SetPower(notch: i32) {
+        pub unsafe extern "system" fn SetPower(notch: i32) {
             ATS .get()
                 .expect("OnceLock error: at SetPower()")
                 .lock()
@@ -289,7 +289,7 @@ macro_rules! ats_main {
         }
 
         #[no_mangle]
-        pub unsafe extern "C" fn SetBrake(notch: i32) {
+        pub unsafe extern "system" fn SetBrake(notch: i32) {
             ATS .get()
                 .expect("OnceLock error: at SetBrake()")
                 .lock()
@@ -298,7 +298,7 @@ macro_rules! ats_main {
         }
 
         #[no_mangle]
-        pub unsafe extern "C" fn SetReverser(notch: i32) {
+        pub unsafe extern "system" fn SetReverser(notch: i32) {
             ATS .get()
                 .expect("OnceLock error: at SetReverser()")
                 .lock()
@@ -307,7 +307,7 @@ macro_rules! ats_main {
         }
 
         #[no_mangle]
-        pub unsafe extern "C" fn KeyDown(key: i32) {
+        pub unsafe extern "system" fn KeyDown(key: i32) {
             ATS .get()
                 .expect("OnceLock error: at KeyDown()")
                 .lock()
@@ -316,7 +316,7 @@ macro_rules! ats_main {
         }
 
         #[no_mangle]
-        pub unsafe extern "C" fn KeyUp(key: i32) {
+        pub unsafe extern "system" fn KeyUp(key: i32) {
             ATS .get()
                 .expect("OnceLock error: at KeyUp()")
                 .lock()
@@ -325,7 +325,7 @@ macro_rules! ats_main {
         }
 
         #[no_mangle]
-        pub unsafe extern "C" fn HornBlow(horn: i32) {
+        pub unsafe extern "system" fn HornBlow(horn: i32) {
             ATS .get()
                 .expect("OnceLock error: at HornBlow()")
                 .lock()
@@ -334,7 +334,7 @@ macro_rules! ats_main {
         }
 
         #[no_mangle]
-        pub unsafe extern "C" fn DoorOpen() {
+        pub unsafe extern "system" fn DoorOpen() {
             ATS .get()
                 .expect("OnceLock error: at DoorOpen()")
                 .lock()
@@ -343,7 +343,7 @@ macro_rules! ats_main {
         }
 
         #[no_mangle]
-        pub unsafe extern "C" fn DoorClose() {
+        pub unsafe extern "system" fn DoorClose() {
             ATS .get()
                 .expect("OnceLock error: at DoorClose()")
                 .lock()
@@ -352,7 +352,7 @@ macro_rules! ats_main {
         }
 
         #[no_mangle]
-        pub unsafe extern "C" fn SetSignal(signal: i32) {
+        pub unsafe extern "system" fn SetSignal(signal: i32) {
             ATS .get()
                 .expect("OnceLock error: at SetSignal()")
                 .lock()
@@ -361,7 +361,7 @@ macro_rules! ats_main {
         }
 
         #[no_mangle]
-        pub unsafe extern "C" fn SetBeaconData(data: AtsBeaconData) {
+        pub unsafe extern "system" fn SetBeaconData(data: AtsBeaconData) {
             ATS .get()
                 .expect("OnceLock error: at SetBeaconData()")
                 .lock()
