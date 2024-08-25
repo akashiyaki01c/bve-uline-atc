@@ -128,7 +128,7 @@ pub struct TIMS {
     bve_distance: f64,
 
     /// 前回、回送放送が流れた時刻
-    out_of_service_sound_time: i32,
+    pub out_of_service_sound_time: i32,
 }
 
 impl TIMS {

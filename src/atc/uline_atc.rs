@@ -261,6 +261,10 @@ impl BveAts for ULineATC {
     }
 
     fn elapse(&mut self, state: AtsVehicleState, panel: &mut [i32], sound: &mut [i32]) -> AtsHandles {
+        if self.time > state.time {
+            self.tims_panel_updated_time = 0;
+            self.tims.out_of_service_sound_time = 0;
+        }
         self.time = state.time;
         self.speed = state.speed;
         self.show_atc_status(panel);
