@@ -41,7 +41,20 @@ pub enum AtsKey {
     /// K ボタン (デフォルト 9)
     K = 14,
     /// L ボタン (デフォルト 0)
-    L = 15
+    L = 15,
+    /// 予期しない値
+    Unknown = -1,
+}
+impl From<i32> for AtsKey {
+    fn from(value: i32) -> Self {
+        unsafe {
+            if 0 <= value && value <= 15 {
+                std::mem::transmute(value)
+            } else {
+                AtsKey::Unknown
+            }
+        }
+    }
 }
 
 /// ゲーム開始時のブレーキ弁の状態
@@ -56,6 +69,19 @@ pub enum AtsInit {
     Emg = 1,
     /// 常用位置
     Svc = 0,
+    /// 予期しない値
+    Unknown = -1,
+}
+impl From<i32> for AtsInit {
+    fn from(value: i32) -> Self {
+        unsafe {
+            if 0 <= value && value <= 15 {
+                std::mem::transmute(value)
+            } else {
+                AtsInit::Unknown
+            }
+        }
+    }
 }
 
 /// サウンドのボリューム
@@ -72,6 +98,19 @@ pub enum AtsSound {
     PlayLooping = 0,
     /// 現在の状態を維持する
     Continue = 2,
+    /// 予期しない値
+    Unknown = -1,
+}
+impl From<i32> for AtsSound {
+    fn from(value: i32) -> Self {
+        unsafe {
+            if 0 <= value && value <= 15 {
+                std::mem::transmute(value)
+            } else {
+                AtsSound::Unknown
+            }
+        }
+    }
 }
 
 /// 警笛のタイプ
@@ -86,6 +125,19 @@ pub enum AtsHorn {
     Secondary = 1,
     /// ミュージックホーン
     Music = 2,
+    /// 予期しない値
+    Unknown = -1,
+}
+impl From<i32> for AtsHorn {
+    fn from(value: i32) -> Self {
+        unsafe {
+            if 0 <= value && value <= 15 {
+                std::mem::transmute(value)
+            } else {
+                AtsHorn::Unknown
+            }
+        }
+    }
 }
 
 /// 定速制御の状態
@@ -100,6 +152,19 @@ pub enum AtsConstantSpeed {
     Enable = 1,
     /// 停止
     Disable = 2,
+    /// 予期しない値
+    Unknown = -1,
+}
+impl From<i32> for AtsConstantSpeed {
+    fn from(value: i32) -> Self {
+        unsafe {
+            if 0 <= value && value <= 15 {
+                std::mem::transmute(value)
+            } else {
+                AtsConstantSpeed::Unknown
+            }
+        }
+    }
 }
 impl Default for AtsConstantSpeed {
     fn default() -> Self {
@@ -262,12 +327,11 @@ macro_rules! ats_main {
 
         #[no_mangle]
         pub unsafe extern "system" fn Initialize(brake: c_int) {
-            println!("{}", brake);
             ATS .get()
                 .expect("OnceLock error: at Initialize()")
                 .lock()
                 .expect("Mutex error: at Initialize()")
-                .initialize(std::mem::transmute(brake))
+                .initialize(AtsInit::from(brake))
         }
 
         #[no_mangle]
@@ -314,7 +378,7 @@ macro_rules! ats_main {
                 .expect("OnceLock error: at KeyDown()")
                 .lock()
                 .expect("Mutex error: at KeyDown()")
-                .key_down(std::mem::transmute(key))
+                .key_down(AtsKey::from(key))
         }
 
         #[no_mangle]
@@ -322,8 +386,8 @@ macro_rules! ats_main {
             ATS .get()
                 .expect("OnceLock error: at KeyUp()")
                 .lock()
-                .expect("Mutex error: at KeyUp()")
-                .key_up(std::mem::transmute(key))
+                .expect("Mutex error: at KeyUp()") 
+                .key_up(AtsKey::from(key))
         }
 
         #[no_mangle]
@@ -332,7 +396,7 @@ macro_rules! ats_main {
                 .expect("OnceLock error: at HornBlow()")
                 .lock()
                 .expect("Mutex error: at HornBlow()")
-                .key_up(std::mem::transmute(horn))
+                .horn_blow(AtsHorn::from(horn))
         }
 
         #[no_mangle]
@@ -371,4 +435,158 @@ macro_rules! ats_main {
                 .set_beacon_data(data)
         }
     };
+}
+
+/// BveAtsトレイト からネイティブAPIへの変換を行うマクロ
+#[macro_export]
+macro_rules! ats_main_empty {
+    () => {
+        use ::std::sync::Mutex;
+        use ::std::sync::OnceLock;
+        use ::std::os::raw::*;
+        use ::bveats_rs::*;
+
+        #[no_mangle]
+        pub unsafe extern "system" fn Load() {
+        }
+
+        #[no_mangle]
+        pub unsafe extern "system" fn Dispose() {
+        }
+
+        #[no_mangle]
+        pub unsafe extern "system" fn GetPluginVersion() -> c_int {
+            ATS_VERSION
+        }
+
+        #[no_mangle]
+        pub unsafe extern "system" fn SetVehicleSpec(spec: AtsVehicleSpec) {
+        }
+
+        #[no_mangle]
+        pub unsafe extern "system" fn Initialize(brake: c_int) {
+        }
+
+        #[no_mangle]
+        pub unsafe extern "system" fn Elapse(state: AtsVehicleState, panel: *mut c_int, sound: *mut c_int) -> AtsHandles {
+            Default::default()
+        }
+
+        #[no_mangle]
+        pub unsafe extern "system" fn SetPower(notch: c_int) {
+        }
+
+        #[no_mangle]
+        pub unsafe extern "system" fn SetBrake(notch: c_int) {
+        }
+
+        #[no_mangle]
+        pub unsafe extern "system" fn SetReverser(notch: c_int) {
+        }
+
+        #[no_mangle]
+        pub unsafe extern "system" fn KeyDown(key: c_int) {
+        }
+
+        #[no_mangle]
+        pub unsafe extern "system" fn KeyUp(key: c_int) {
+        }
+
+        #[no_mangle]
+        pub unsafe extern "system" fn HornBlow(horn: c_int) {
+        }
+
+        #[no_mangle]
+        pub unsafe extern "system" fn DoorOpen() {
+        }
+
+        #[no_mangle]
+        pub unsafe extern "system" fn DoorClose() {
+        }
+
+        #[no_mangle]
+        pub unsafe extern "system" fn SetSignal(signal: c_int) {
+        }
+
+        #[no_mangle]
+        pub unsafe extern "system" fn SetBeaconData(data: AtsBeaconData) {
+        }
+    };
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct EmptyAts {
+    power: i32,
+    brake: i32,
+    reverser: i32,
+}
+impl BveAts for EmptyAts {
+    fn load(&mut self) {
+        eprintln!("[EmptyAts] Load()");
+    }
+
+    fn dispose(&mut self) {
+        eprintln!("[EmptyAts] Dispose()");
+    }
+
+    fn set_vehicle_spec(&mut self, spec: AtsVehicleSpec) {
+        eprintln!("[EmptyAts] SetVehicleSpec() spec={:?}", spec);
+    }
+
+    fn initialize(&mut self, handle: AtsInit) {
+        eprintln!("[EmptyAts] Initialize() handle={:?}", handle);
+    }
+
+    fn elapse(&mut self, state: AtsVehicleState, panel: &mut [i32], sound: &mut [i32]) -> AtsHandles {
+        eprintln!("[EmptyAts] Elapse() state={:?}", state);
+        AtsHandles {
+            brake: self.brake,
+            power: self.power,
+            reverser: self.reverser,
+            constant_speed: 0
+        }
+    }
+
+    fn set_power(&mut self, notch: i32) {
+        eprintln!("[EmptyAts] SetPower() handle={:?}", notch);
+        self.power = notch;
+    }
+
+    fn set_brake(&mut self, notch: i32) {
+        eprintln!("[EmptyAts] SetBrake() handle={:?}", notch);
+        self.brake = notch;
+    }
+
+    fn set_reverser(&mut self, notch: i32) {
+        eprintln!("[EmptyAts] SetReverser() handle={:?}", notch);
+        self.reverser = notch;
+    }
+
+    fn key_down(&mut self, key: AtsKey) {
+        eprintln!("[EmptyAts] KeyDown() key={:?}", key);
+    }
+
+    fn key_up(&mut self, key: AtsKey) {
+        eprintln!("[EmptyAts] KeyUp() key={:?}", key);
+    }
+
+    fn horn_blow(&mut self, horn_type: AtsHorn) {
+        eprintln!("[EmptyAts] KeyDown() hornType={:?}", horn_type);
+    }
+
+    fn door_open(&mut self) {
+        eprintln!("[EmptyAts] DoorOpen()");
+    }
+
+    fn door_close(&mut self) {
+        eprintln!("[EmptyAts] DoorClose()");
+    }
+
+    fn set_signal(&mut self, signal: i32) {
+        eprintln!("[EmptyAts] SetSignal() signal={}", signal);
+    }
+
+    fn set_beacon_data(&mut self, data: AtsBeaconData) {
+        eprintln!("[EmptyAts] SetBeaconData() signal={:?}", data);
+    }
 }
