@@ -178,6 +178,8 @@ pub struct ULineATC {
     pub is_constant_control: bool,
     /// 現在抑速制御中か
     pub is_holding_control: bool,
+    /// ATC開放中か
+    atc_disable: bool,
 }
 
 impl ULineATC {
@@ -204,6 +206,7 @@ impl ULineATC {
         self.tims_panel[41] = if self.enable_01kakunin_unten { 1 } else { 0 };
         self.tims_panel[19] = self.is_constant_control as i32;
         self.tims_panel[20] = self.is_holding_control as i32;
+        self.tims_panel[46] = self.atc_disable as i32;
     }
     fn elapse_emg_sound(&mut self, sound: &mut [i32]) {
         for i in 101..=105 { sound[i] = AtsSound::Continue as i32; }
@@ -254,28 +257,6 @@ impl BveAts for ULineATC {
     }
     fn initialize(&mut self, handle: AtsInit) {
         println!("Initialize: {:?}", handle);
-        
-        self.man_power = 0; 
-        self.man_brake = 0; 
-        self.man_reverser = 0; 
-        self.now_signal = AtcSignal::default(); 
-        self.vehicle_spec = AtsVehicleSpec::default(); 
-        self.is_changing_signal = false;
-        self.atc_brake_status = AtcBrakeStatus::Passing;
-        self.tims = TIMS::default();
-        self.atc_status = AtcStatus::default();
-        self.enable_01kakunin_unten = false;
-        self.enable_02hijo_unten = false;
-        self.emg_sound = EmgSound::default();
-        self.emg_sound_keydown = EmgSoundKeyDown::default();
-        self.time = 0;
-        self.speed = 0.0;
-        self.is_emg_brake_sound = false;
-        self.is_constant_control = false;
-        self.is_holding_control = false;
-        self.tims_panel = Box::new([0; ELAPSE_PANEL_SIZE]);
-        self.tims_panel_updated_time = 0;
-
         self.tims.initialize(handle);
     }
 
@@ -515,6 +496,7 @@ impl Default for ULineATC {
             is_holding_control: false,
             tims_panel: Box::new([0; ELAPSE_PANEL_SIZE]),
             tims_panel_updated_time: 0,
+            atc_disable: false,
         }
     }
 }
