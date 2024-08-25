@@ -1,7 +1,8 @@
 #![allow(unused)]
+use std::os::raw::*;
 
 /// GetPluginVersion() の戻り値を表す。
-pub const ATS_VERSION: i32 = 0x00020000;
+pub const ATS_VERSION: c_int = 0x00020000;
 
 /// ATS キー コード
 #[repr(i32)]
@@ -112,15 +113,15 @@ impl Default for AtsConstantSpeed {
 #[derive(Clone, Copy)]
 pub struct AtsVehicleSpec {
     /// ブレーキノッチ数
-    pub brake_notches: i32,
+    pub brake_notches: c_int,
     /// 力行ノッチ数
-    pub power_notches: i32,
+    pub power_notches: c_int,
     /// ATS確認ノッチ
-    pub ats_notch: i32,
+    pub ats_notch: c_int,
     /// ブレーキ弁 67 度に相当するノッチ
-    pub b67_notch: i32,
+    pub b67_notch: c_int,
     /// 編成両数
-    pub cars: i32,
+    pub cars: c_int,
 }
 
 /// 車両の状態量
@@ -129,23 +130,23 @@ pub struct AtsVehicleSpec {
 #[derive(Clone, Copy)]
 pub struct AtsVehicleState {
     /// 列車位置 [m]
-    pub location: f64,
+    pub location: c_double,
     /// 列車速度 [km/h]
-    pub speed: f32,
+    pub speed: c_float,
     /// 現在時刻 [ms]
-    pub time: i32,
+    pub time: c_int,
     /// ブレーキシリンダ圧力 [kPa]
-    pub bc_pressure: f32,
+    pub bc_pressure: c_float,
     /// 元空気ダメ圧力 [kPa]
-    pub mr_pressure: f32,
+    pub mr_pressure: c_float,
     /// 釣り合い空気ダメ圧力 [kPa]
-    pub er_pressure: f32,
+    pub er_pressure: c_float,
     /// ブレーキ管圧力 [kPa]
-    pub bp_pressure: f32,
+    pub bp_pressure: c_float,
     /// 直通管圧力 [kPa]
-    pub sap_pressure: f32,
+    pub sap_pressure: c_float,
     /// 電流 [A]
-    pub current: i32,
+    pub current: c_float,
 }
 
 /// 車上子で受け取った情報
@@ -154,13 +155,13 @@ pub struct AtsVehicleState {
 #[derive(Clone, Copy)]
 pub struct AtsBeaconData {
     /// 地上子種別
-    pub beacon_type: i32,
+    pub beacon_type: c_int,
     /// 対となるセクションの信号
-    pub signal: i32,
+    pub signal: c_int,
     /// 対となるセクションまでの距離 [m]
-    pub distance: f32,
+    pub distance: c_float,
     /// 地上子に設定された任意の値
-    pub optional: i32,
+    pub optional: c_int,
 }
 
 /// Bve trainsim に渡すハンドル制御値
@@ -169,13 +170,13 @@ pub struct AtsBeaconData {
 #[derive(Clone, Copy)]
 pub struct AtsHandles {
     /// ブレーキノッチ
-    pub brake: i32,
+    pub brake: c_int,
     /// 力行ノッチ
-    pub power: i32,
+    pub power: c_int,
     /// レバーサー位置
-    pub reverser: i32,
+    pub reverser: c_int,
     /// 定速制御の状態
-    pub constant_speed: AtsConstantSpeed,
+    pub constant_speed: c_int,
 }
 
 /// Rust上でのATS実装をサポートするトレイト
@@ -220,6 +221,7 @@ macro_rules! ats_main {
     ($t: ty) => {
         use ::std::sync::Mutex;
         use ::std::sync::OnceLock;
+        use ::std::os::raw::*;
         use ::bveats_rs::*;
         static ATS: OnceLock<Mutex<$t>> = OnceLock::new();
 
@@ -241,7 +243,7 @@ macro_rules! ats_main {
         }
 
         #[no_mangle]
-        pub unsafe extern "system" fn GetPluginVersion() -> i32 {
+        pub unsafe extern "system" fn GetPluginVersion() -> c_int {
             ATS .get()
                 .expect("OnceLock error: at GetPluginVersion()")
                 .lock()
@@ -259,7 +261,7 @@ macro_rules! ats_main {
         }
 
         #[no_mangle]
-        pub unsafe extern "system" fn Initialize(brake: i32) {
+        pub unsafe extern "system" fn Initialize(brake: c_int) {
             println!("{}", brake);
             ATS .get()
                 .expect("OnceLock error: at Initialize()")
@@ -269,7 +271,7 @@ macro_rules! ats_main {
         }
 
         #[no_mangle]
-        pub unsafe extern "system" fn Elapse(state: AtsVehicleState, panel: *mut i32, sound: *mut i32) -> AtsHandles {
+        pub unsafe extern "system" fn Elapse(state: AtsVehicleState, panel: *mut c_int, sound: *mut c_int) -> AtsHandles {
             ATS .get()
                 .expect("OnceLock error: at Elapse()")
                 .lock()
@@ -280,7 +282,7 @@ macro_rules! ats_main {
         }
 
         #[no_mangle]
-        pub unsafe extern "system" fn SetPower(notch: i32) {
+        pub unsafe extern "system" fn SetPower(notch: c_int) {
             ATS .get()
                 .expect("OnceLock error: at SetPower()")
                 .lock()
@@ -289,7 +291,7 @@ macro_rules! ats_main {
         }
 
         #[no_mangle]
-        pub unsafe extern "system" fn SetBrake(notch: i32) {
+        pub unsafe extern "system" fn SetBrake(notch: c_int) {
             ATS .get()
                 .expect("OnceLock error: at SetBrake()")
                 .lock()
@@ -298,7 +300,7 @@ macro_rules! ats_main {
         }
 
         #[no_mangle]
-        pub unsafe extern "system" fn SetReverser(notch: i32) {
+        pub unsafe extern "system" fn SetReverser(notch: c_int) {
             ATS .get()
                 .expect("OnceLock error: at SetReverser()")
                 .lock()
@@ -307,7 +309,7 @@ macro_rules! ats_main {
         }
 
         #[no_mangle]
-        pub unsafe extern "system" fn KeyDown(key: i32) {
+        pub unsafe extern "system" fn KeyDown(key: c_int) {
             ATS .get()
                 .expect("OnceLock error: at KeyDown()")
                 .lock()
@@ -316,7 +318,7 @@ macro_rules! ats_main {
         }
 
         #[no_mangle]
-        pub unsafe extern "system" fn KeyUp(key: i32) {
+        pub unsafe extern "system" fn KeyUp(key: c_int) {
             ATS .get()
                 .expect("OnceLock error: at KeyUp()")
                 .lock()
@@ -325,7 +327,7 @@ macro_rules! ats_main {
         }
 
         #[no_mangle]
-        pub unsafe extern "system" fn HornBlow(horn: i32) {
+        pub unsafe extern "system" fn HornBlow(horn: c_int) {
             ATS .get()
                 .expect("OnceLock error: at HornBlow()")
                 .lock()
@@ -352,7 +354,7 @@ macro_rules! ats_main {
         }
 
         #[no_mangle]
-        pub unsafe extern "system" fn SetSignal(signal: i32) {
+        pub unsafe extern "system" fn SetSignal(signal: c_int) {
             ATS .get()
                 .expect("OnceLock error: at SetSignal()")
                 .lock()

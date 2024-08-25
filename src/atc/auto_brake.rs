@@ -12,19 +12,19 @@ fn get_none_brake_handle<'a>(_atc: &'a ULineATC, handles: AtsHandles) -> AtsHand
 /// ATC緩和ブレーキ状態のAtsHandlesを取得
 fn get_half_brake_handle<'a>(_atc: &'a ULineATC, mut handles: AtsHandles) -> AtsHandles {
 	handles.brake = 4;
-	handles.constant_speed = AtsConstantSpeed::Disable;
+	handles.constant_speed = AtsConstantSpeed::Disable as i32;
 	handles
 }
 /// ATC常用ブレーキ状態のAtsHandlesを取得
 fn get_full_brake_handle<'a>(atc: &'a ULineATC, mut handles: AtsHandles) -> AtsHandles {
 	handles.brake = atc.vehicle_spec.brake_notches;
-	handles.constant_speed = AtsConstantSpeed::Disable;
+	handles.constant_speed = AtsConstantSpeed::Disable as i32;
 	handles
 }
 /// ATC非常ブレーキ状態のAtsHandlesを取得
 fn get_emg_brake_handle<'a>(atc: &'a ULineATC, mut handles: AtsHandles) -> AtsHandles {
 	handles.brake = atc.vehicle_spec.brake_notches + 1;
-	handles.constant_speed = AtsConstantSpeed::Disable;
+	handles.constant_speed = AtsConstantSpeed::Disable as i32;
 	handles
 }
 

@@ -22,13 +22,13 @@ pub fn is_air_holding_speed(speed: f32, notch: i32) -> bool {
 
 /// 定速制御を適用する関数
 fn constant_speed(mut handles: AtsHandles) -> AtsHandles {
-    handles.constant_speed = AtsConstantSpeed::Enable;
+    handles.constant_speed = AtsConstantSpeed::Enable as i32;
 	handles
 }
 
 /// 抑速制御を適用する関数
 fn holding_speed(mut handles: AtsHandles) -> AtsHandles {
-    handles.constant_speed = AtsConstantSpeed::Enable;
+    handles.constant_speed = AtsConstantSpeed::Enable as i32;
 	handles.power = 0;
 	handles
 }
@@ -48,7 +48,7 @@ pub fn constant_and_holding_speed(mut handles: AtsHandles, is_constant_speed: bo
 	} else if is_holding_speed {
 		handles = holding_speed(handles);
 	} else {
-		handles.constant_speed = AtsConstantSpeed::Disable;
+		handles.constant_speed = AtsConstantSpeed::Disable as i32;
 	}
 	if is_air_holding_speed {
 		handles = air_holding_speed(handles);

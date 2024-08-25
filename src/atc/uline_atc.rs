@@ -249,10 +249,33 @@ impl BveAts for ULineATC {
     }
     fn set_vehicle_spec(&mut self, spec: AtsVehicleSpec) {
         println!("SetVehicleSpec: {:?}", spec);
-        self.vehicle_spec = spec;
+        self.vehicle_spec = spec.clone();
         self.tims.set_vehicle_spec(spec);
     }
     fn initialize(&mut self, handle: AtsInit) {
+        println!("Initialize: {:?}", handle);
+        
+        self.man_power = 0; 
+        self.man_brake = 0; 
+        self.man_reverser = 0; 
+        self.now_signal = AtcSignal::default(); 
+        self.vehicle_spec = AtsVehicleSpec::default(); 
+        self.is_changing_signal = false;
+        self.atc_brake_status = AtcBrakeStatus::Passing;
+        self.tims = TIMS::default();
+        self.atc_status = AtcStatus::default();
+        self.enable_01kakunin_unten = false;
+        self.enable_02hijo_unten = false;
+        self.emg_sound = EmgSound::default();
+        self.emg_sound_keydown = EmgSoundKeyDown::default();
+        self.time = 0;
+        self.speed = 0.0;
+        self.is_emg_brake_sound = false;
+        self.is_constant_control = false;
+        self.is_holding_control = false;
+        self.tims_panel = Box::new([0; ELAPSE_PANEL_SIZE]);
+        self.tims_panel_updated_time = 0;
+
         self.tims.initialize(handle);
     }
 
@@ -267,7 +290,7 @@ impl BveAts for ULineATC {
             brake: self.man_brake,
             power: self.man_power,
             reverser: self.man_reverser,
-            constant_speed: AtsConstantSpeed::Continue
+            constant_speed: AtsConstantSpeed::Continue as i32
         };
         // TIMS表示用のAtsHandles (擬似空制抑速を適用しない)
         let display_handles = constant_and_holding_speed(
