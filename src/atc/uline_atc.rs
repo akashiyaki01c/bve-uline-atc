@@ -305,7 +305,6 @@ impl BveAts for ULineATC {
 
         // ATC音関連
         if self.is_changing_signal {
-            println!("ATC変化ベル鳴らすが？");
             sound[2] = AtsSound::Play as i32;
             self.is_changing_signal = false;
         } else {
