@@ -1,5 +1,5 @@
-# BveKobeCitySubwayAtc
-神戸市営地下鉄西神・山手線のATC再現プラグインです。
+# bve-uline-atc
+某みどりのUラインのATC再現プラグインです。
 
 ## ドキュメント類
 * [機能一覧](./docs/feature.md)
