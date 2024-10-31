@@ -1,5 +1,5 @@
 use ::bveats_rs::*;
-use crate::{atc::{atc_signal::*, auto_brake::elapse_hisetsu_brake, speed_control::{is_constant_speed, is_holding_speed}}, tims::TIMS};
+use crate::{atc::{atc_signal::*, auto_brake::elapse_hisetsu_brake, speed_control::{is_constant_speed, is_holding_speed}}, ato::uline_ato::ULineATO, tims::TIMS};
 
 use super::{auto_brake::elapse_atc_brake, speed_control::{constant_and_holding_speed, is_air_holding_speed}};
 
@@ -180,6 +180,9 @@ pub struct ULineATC {
     pub is_holding_control: bool,
     /// ATC開放中か
     atc_disable: bool,
+
+    /// ATO
+    ato: ULineATO
 }
 
 impl ULineATC {
@@ -241,10 +244,12 @@ impl BveAts for ULineATC {
     fn load(&mut self) {
         println!("Load");
         self.tims.load();
+        self.ato.load();
     }
     fn dispose(&mut self) {
         println!("Dispose");
         self.tims.dispose();
+        self.ato.dispose();
     }
     fn get_plugin_version(&mut self) -> i32 { 
         println!("GetPluginVersion"); 
@@ -254,10 +259,12 @@ impl BveAts for ULineATC {
         println!("SetVehicleSpec: {:?}", spec);
         self.vehicle_spec = spec.clone();
         self.tims.set_vehicle_spec(spec);
+        self.ato.set_vehicle_spec(spec);
     }
     fn initialize(&mut self, handle: AtsInit) {
         println!("Initialize: {:?}", handle);
         self.tims.initialize(handle);
+        self.ato.initialize(handle);
     }
 
     fn elapse(&mut self, state: AtsVehicleState, panel: &mut [i32], sound: &mut [i32]) -> AtsHandles {
@@ -271,11 +278,21 @@ impl BveAts for ULineATC {
         self.elapse_emg_sound(sound);
 
         // デフォルトのAtsHandles
-        let default_handles = AtsHandles {
-            brake: self.man_brake,
-            power: self.man_power,
-            reverser: self.man_reverser,
-            constant_speed: AtsConstantSpeed::Continue as i32
+        let default_handles = if self.atc_status == AtcStatus::ATO {
+            let handle = self.ato.elapse(state, panel, sound);
+            AtsHandles {
+                brake: handle.brake.max(self.man_brake),
+                power: if self.man_brake != 0 { 0 } else { handle.power },
+                reverser: handle.reverser,
+                constant_speed: if self.man_brake != 0 { AtsConstantSpeed::Disable as i32 } else { handle.constant_speed }
+            }
+        } else {
+            AtsHandles {
+                brake: self.man_brake,
+                power: self.man_power,
+                reverser: self.man_reverser,
+                constant_speed: AtsConstantSpeed::Continue as i32
+            }
         };
         // TIMS表示用のAtsHandles (擬似空制抑速を適用しない)
         let display_handles = constant_and_holding_speed(
@@ -284,11 +301,15 @@ impl BveAts for ULineATC {
             false, 
             false);
         // BVE制御用のAtsHandles
-        let control_handles = constant_and_holding_speed(
-            default_handles, 
-            self.is_constant_control, 
-            self.is_holding_control, 
-            is_air_holding_speed(self.speed, self.man_power));
+        let control_handles = if self.atc_status == AtcStatus::ATO {
+            default_handles
+        } else {
+            constant_and_holding_speed(
+                default_handles, 
+                self.is_constant_control, 
+                self.is_holding_control, 
+                is_air_holding_speed(self.speed, self.man_power))
+        };
 
         let display_handles = match self.atc_status {
             AtcStatus::ATO => elapse_atc_brake(self, display_handles.clone(), state, sound),
@@ -329,6 +350,7 @@ impl BveAts for ULineATC {
         self.is_holding_control = is_holding_speed(self.speed, self.man_power, notch);
         self.man_power = notch;
         self.tims.set_power(notch);
+        self.ato.set_power(notch);
     }
     fn set_brake(&mut self, notch: i32) {
         println!("SetBrake: {:?}", notch);
@@ -338,11 +360,13 @@ impl BveAts for ULineATC {
         }
 
         self.tims.set_brake(notch);
+        self.ato.set_brake(notch);
     }
     fn set_reverser(&mut self, notch: i32) {
         println!("SetReverser: {:?}", notch);
         self.man_reverser = notch;
         self.tims.set_reverser(notch);
+        self.ato.set_brake(notch);
     }
     fn key_down(&mut self, key: AtsKey) {
         println!("KeyDown: {:?}", key);
@@ -357,9 +381,11 @@ impl BveAts for ULineATC {
             }
             AtsKey::C1 => { // PageUp 運転切換スイッチ左
                 self.atc_status = self.atc_status.get_left_status();
+                println!("[ATCStatusChange] {:?}", self.atc_status);
             }
             AtsKey::C2 => { // PageDown 運転切換スイッチ右
                 self.atc_status = self.atc_status.get_right_status();
+                println!("[ATCStatusChange] {:?}", self.atc_status);
             }
             AtsKey::H => { // 6 非常放送 信号待ち
                 if let EmgSoundKeyDown::None = self.emg_sound_keydown {
@@ -439,6 +465,7 @@ impl BveAts for ULineATC {
             _ => {}
         }
         self.tims.key_down(key);
+        self.ato.key_down(key);
     }
     fn key_up(&mut self, key: AtsKey) {
         println!("KeyUp: {:?}", key);
@@ -449,18 +476,22 @@ impl BveAts for ULineATC {
             _ => {}
         }
         self.tims.key_up(key);
+        self.ato.key_up(key);
     }
     fn horn_blow(&mut self, horn_type: AtsHorn) {
         println!("HornBlow: {:?}", horn_type);
         self.tims.horn_blow(horn_type);
+        self.ato.horn_blow(horn_type);
     }
     fn door_open(&mut self) {
         println!("DoorOpen");
         self.tims.door_open();
+        self.ato.door_open();
     }
     fn door_close(&mut self) {
         println!("DoorClose");
         self.tims.door_close();
+        self.ato.door_close();
     }
     fn set_signal(&mut self, signal: i32) {
         println!("SetSignal: {:?}", signal);
@@ -468,11 +499,13 @@ impl BveAts for ULineATC {
             self.now_signal = unsafe { std::mem::transmute(signal as u8) };
             self.is_changing_signal = true;
             self.tims.set_signal(signal);
+            self.ato.set_signal(signal);
         }
     }
     fn set_beacon_data(&mut self, data: AtsBeaconData) {
         println!("SetBeaconData: {:?}", data);
         self.tims.set_beacon_data(data);
+        self.ato.set_beacon_data(data);
     }
 }
 
@@ -500,6 +533,7 @@ impl Default for ULineATC {
             tims_panel: Box::new([0; ELAPSE_PANEL_SIZE]),
             tims_panel_updated_time: 0,
             atc_disable: false,
+            ato: ULineATO::default()
         }
     }
 }

@@ -40,6 +40,19 @@ impl AtcSignal {
             Self::Irekae25 => 25,
         }
     }
+    pub fn getLower(&self) -> Self {
+        match self {
+            Self::Signal02 => Self::Signal02,
+            Self::Signal01 => Self::Signal02,
+            Self::Signal15 => Self::Signal01,
+            Self::Signal25 => Self::Signal15,
+            Self::Signal45 => Self::Signal25,
+            Self::Signal60 => Self::Signal45,
+            Self::Signal75 => Self::Signal60,
+            Self::Signal90 => Self::Signal75,
+            _ => Self::Signal02,
+        }
+    }
 }
 impl Default for AtcSignal {
     fn default() -> Self {

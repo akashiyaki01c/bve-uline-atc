@@ -39,35 +39,29 @@ pub fn elapse_atc_brake<'a>(atc: &'a mut ULineATC, handles: AtsHandles, state: A
 	let enable_auto_brake = enable_atc_brake(atc.now_signal.getSpeed(), state.speed as i32);
 	// ブレーキが掛かった瞬間
 	if atc.atc_brake_status == AtcBrakeStatus::Passing && enable_auto_brake {
-		println!("[Brake] Passing -> StartHalfBraking");
 		atc.atc_brake_status = AtcBrakeStatus::HalfBraking(state.time);
 	}
 	// 緩和ブレーキからフルブレーキになる瞬間
 	if let AtcBrakeStatus::HalfBraking(time) = atc.atc_brake_status {
-		println!("[Brake] StartHalfBraking -> FullBraking");
 		if time + 700 < state.time {
 			atc.atc_brake_status = AtcBrakeStatus::FullBraking;
 		}
 	}
 	// ブレーキが解除された瞬間
 	if atc.atc_brake_status == AtcBrakeStatus::EmergencyBraking && !enable_auto_brake {
-		println!("[Brake] EmgBraking -> Passing");
 		atc.atc_brake_status = AtcBrakeStatus::Passing;
 	}
 	if atc.atc_brake_status == AtcBrakeStatus::FullBraking && !enable_auto_brake {
-		println!("[Brake] FullBraking -> Passing");
 		atc.atc_brake_status = AtcBrakeStatus::Passing;
 	}
 	if !enable_auto_brake {
 		if let AtcBrakeStatus::HalfBraking(_) = atc.atc_brake_status {
-			println!("[Brake] StartHalfBraking -> Passing");
 			atc.atc_brake_status = AtcBrakeStatus::Passing;
 		}
 	}
 
 	// 02信号なら非常ブレーキ
 	if atc.now_signal == AtcSignal::Signal02 {
-		println!("[Brake] EmergencyBraking!!!");
 		atc.atc_brake_status = AtcBrakeStatus::EmergencyBraking;
 	}
 
