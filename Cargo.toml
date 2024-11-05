@@ -10,3 +10,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 bveats-rs = { path = "./bveats-rs" }
+serde = { version = "1.0.214", features = ["derive"] }
+toml = "0.8.19"
+winapi = { version = "0.3", features = ["winuser", "libloaderapi", ] }

@@ -1,4 +1,3 @@
-use core::{f32, time};
 
 use bveats_rs::{AtsConstantSpeed, AtsHandles, AtsKey, AtsVehicleState, BveAts};
 
@@ -44,6 +43,11 @@ pub struct ULineATO {
     before_speed: f32,
     before_acceleration: f32,
     recent_operation_time: i32,
+    recent_tasc_operation_time: i32,
+    recent_tasc_calced_deceleration: f32,
+    recent_tasc_deceleration: f32,
+    recent_tasc_difference: f32,
+    is_not_one_time_braking: bool,
 }
 impl BveAts for ULineATO {
     fn load(&mut self) {
@@ -61,11 +65,9 @@ impl BveAts for ULineATO {
     fn elapse(&mut self, state: bveats_rs::AtsVehicleState, _panel: &mut [i32], _sound: &mut [i32]) -> bveats_rs::AtsHandles {
         let delta = state.time - self.before_time;
         let acceleration_km_h_s = (state.speed - self.before_speed) / (delta as f32 / 1000.0);
-        let acceleration_acceleration = (acceleration_km_h_s - self.before_acceleration) / (delta as f32 / 1000.0);
 
         let atc_brake =  state.speed > self.signal.getSpeed() as f32;
         let target_speed = self.signal.getSpeed() - 5; // ATO目標速度
-        let target_relative_speed = state.speed - target_speed as f32; // ATO目標速度からの相対速度
 
         // ATCブレーキチェック
         if atc_brake {
@@ -79,24 +81,24 @@ impl BveAts for ULineATO {
                     self.status = ATOStatus::ConstantSpeed;
                 }
 
-                let operatable500 = || {
-                    let result = (state.time - self.recent_operation_time) > 500;
+                let operatable100 = || {
+                    let result = (state.time - self.recent_operation_time) > 100;
                     result
                 };
                 if self.now_brake != 0 {
-                    if operatable500() {
+                    if operatable100() {
                         self.now_brake = 0;
                         self.recent_operation_time = state.time;
                     }
                 } else {
-                    if operatable500() {
+                    if operatable100() {
                         self.now_power += 1;
                         self.recent_operation_time = state.time;
                     }
                 }
 
-                self.now_power = self.now_power.clamp(0, 4);
-                self.now_brake = self.now_brake.clamp(0, 7);
+                self.now_power = self.now_power.clamp(0, 31);
+                self.now_brake = self.now_brake.clamp(0, 31);
 
 
                 self.before_time = state.time;
@@ -117,7 +119,7 @@ impl BveAts for ULineATO {
                 self.before_acceleration = acceleration_km_h_s;
                 result
             }
-            ATOStatus::TASC1(pattern_start_time, beacon_location, target_distance) => {
+            ATOStatus::TASC1(_pattern_start_time, beacon_location, target_distance) => {
                 if beacon_location.is_nan() {
                     if let ATOStatus::TASC1(_, location, _) = &mut self.status {
                         *location = state.location as f32;
@@ -156,7 +158,7 @@ impl BveAts for ULineATO {
                 self.before_acceleration = acceleration_km_h_s;
                 result.clone()
             }
-            ATOStatus::TASC90(pattern_start_time, beacon_location, target_distance) => {
+            ATOStatus::TASC90(_pattern_start_time, beacon_location, target_distance) => {
                 // let result = self.ato_tasc(state, pattern_start_time, 95.0);
                 if beacon_location.is_nan() {
                     if let ATOStatus::TASC90(_, location, _) = &mut self.status {
@@ -169,13 +171,9 @@ impl BveAts for ULineATO {
                 self.before_acceleration = acceleration_km_h_s;
                 result.clone()
             }
-            ATOStatus::P3(pattern_start_time, beacon_location, target_distance) => {
+            ATOStatus::P3(_pattern_start_time, beacon_location, target_distance) => {
                 let result = &self.ato_tasc_with_distance(state, (beacon_location + target_distance) - state.location as f32);
                 
-                let operatable200 = || {
-                    let result = (state.time - self.recent_operation_time) > 200;
-                    result
-                };
                 if state.speed == 0.0 {
                     let status = ATOStatus::Stop;
                     println!("[ATO] {:?}→{:?}", self.status, status);
@@ -230,8 +228,8 @@ impl BveAts for ULineATO {
                     self.recent_operation_time = state.time;
                 }
 
-                self.now_power = self.now_power.clamp(0, 4);
-                self.now_brake = self.now_brake.clamp(0, 5);
+                self.now_power = self.now_power.clamp(0, 31);
+                self.now_brake = self.now_brake.clamp(0, 23);
 
                 AtsHandles {
                     power: self.now_power,
@@ -273,14 +271,6 @@ impl BveAts for ULineATO {
                     brake: 7,
                     reverser: 0,
                     constant_speed: AtsConstantSpeed::Disable as i32
-                }
-            }
-            _ => {
-                AtsHandles {
-                    power: 0,
-                    brake: 0,
-                    reverser: 0,
-                    constant_speed: 0
                 }
             }
         };
@@ -337,12 +327,12 @@ impl BveAts for ULineATO {
     fn set_beacon_data(&mut self, data: bveats_rs::AtsBeaconData) {
         match data.beacon_type {
             1 => { // 第1パターン
-                let status = ATOStatus::TASC1(self.before_time, f32::NAN , data.optional as f32);
+                let status = ATOStatus::TASC1(self.before_time, f32::NAN , 350.5);
                 println!("[ATO] {:?}→{:?}", self.status, status);
                 self.status = status;
             }
             2 => { // 第2パターン
-                let status = ATOStatus::TASC2(self.before_time, f32::NAN , data.optional as f32);
+                let status = ATOStatus::TASC2(self.before_time, f32::NAN , 25.5);
                 println!("[ATO] {:?}→{:?}", self.status, status);
                 self.status = status;
             }
@@ -351,6 +341,8 @@ impl BveAts for ULineATO {
                     let status = ATOStatus::P3(pattern_start_time, beacon_location, target_distance);
                     println!("[ATO] {:?}→{:?}", self.status, status);
                     self.status = status;
+                    self.recent_tasc_operation_time = 0;
+                    self.is_not_one_time_braking = false;
                 };
             }
             4 => { // 減速制御
@@ -367,7 +359,7 @@ impl BveAts for ULineATO {
                 self.status = status;
             }
             6 => { // 90パターン
-                let status = ATOStatus::TASC90(self.before_time, f32::NAN , data.optional as f32);
+                let status = ATOStatus::TASC90(self.before_time, f32::NAN , 600.5);
                 println!("[ATO] {:?}→{:?}", self.status, status);
                 self.status = status;
             }
@@ -403,57 +395,34 @@ impl ULineATO {
         const POWER: i32 = 1;
         const COASTING: i32 = 0;
         const BRAKE: i32 = -1;
-        let now_notch = if self.now_power != 0 {
-            POWER
-        } else if self.now_brake != 0 {
-            BRAKE
-        } else {
-            COASTING
-        };
 
-        let mut operatable100 = || {
-            let result = (state.time - self.recent_operation_time) > 100;
-            result
-        };
-        let mut operatable200 = || {
-            let result = (state.time - self.recent_operation_time) > 200;
-            result
-        };
-        let mut operatable250 = || {
+        let operatable250 = || {
             let result = (state.time - self.recent_operation_time) > 250;
             result
         };
-        let mut operatable500 = || {
-            let result = (state.time - self.recent_operation_time) > 500;
-            result
-        };
-        let mut operatable1000 = || {
-            let result = (state.time - self.recent_operation_time) > 1000;
-            result
-        };
 
-        let mut plus_power = |mut power: &mut i32, mut brake: &mut i32| {
+        let plus_power = |power: &mut i32, brake: &mut i32| {
             if *brake == 0 {
                 *power += 1;
             } else {
                 *brake -= 1;
             }
         };
-        let mut plus_power_weak = |mut power: &mut i32, mut brake: &mut i32| {
+        let plus_power_weak = |_power: &mut i32, brake: &mut i32| {
             if *brake == 0 {
                 // *power += 1;
             } else {
                 *brake -= 1;
             }
         };
-        let mut minus_power = |mut power: &mut i32, mut brake: &mut i32| {
+        let minus_power = |power: &mut i32, brake: &mut i32| {
             if *power == 0 {
                 *brake += 1;
             } else {
                 *power -= 1;
             }
         };
-        let mut minus_power_weak = |mut power: &mut i32, mut brake: &mut i32| {
+        let minus_power_weak = |power: &mut i32, _brake: &mut i32| {
             if *power == 0 {
                 // *brake += 1;
             } else {
@@ -526,7 +495,7 @@ impl ULineATO {
             }
         } */
 
-        let constant = match (target_relative_speed + acceleration_km_h_s * 0.5) {
+        let constant = match target_relative_speed + acceleration_km_h_s * 0.5 {
             speed if speed < -5.0 => {
                 if operatable250() {
                     // println!("< -8.0");
@@ -577,8 +546,8 @@ impl ULineATO {
             _ => { false }
         };
 
-        self.now_power = self.now_power.clamp(0, 4);
-        self.now_brake = self.now_brake.clamp(0, 7);
+        self.now_power = self.now_power.clamp(0, 31);
+        self.now_brake = self.now_brake.clamp(0, 31);
         if constant {
             self.now_brake = 0;
             self.now_power = 0;
@@ -594,24 +563,14 @@ impl ULineATO {
     fn ato_tasc(&mut self, state: AtsVehicleState, pattern_start_time: i32, pattern_start_speed: f32) -> AtsHandles {
         let passage_time = state.time - pattern_start_time;
         let target_speed = pattern_start_speed - (passage_time as f32 / 1000.0) * 2.5;
-        let relative_speed = state.speed - target_speed;
 
         println!("{target_speed}");
-
-        let operatable250 = || {
-            let result = (state.time - self.recent_operation_time) > 250;
-            result
-        };
-        let operatable1000 = || {
-            let result = (state.time - self.recent_operation_time) > 1000;
-            result
-        };
 
         let output_deceleration = 2.5 - (target_speed - state.speed) / 2.0;
         let output_brake = output_deceleration / 3.5 * 7.0;
 
         self.now_power = 0;
-        self.now_brake = (output_brake.floor() as i32).clamp(0, 7);
+        self.now_brake = (output_brake.floor() as i32).clamp(0, 31);
 
         AtsHandles {
             power: self.now_power,
@@ -621,31 +580,61 @@ impl ULineATO {
         }
     }
     fn ato_tasc_with_distance(&mut self, state: AtsVehicleState, remaining_distance: f32) -> AtsHandles {
-        let target_speed = 
-            (7.2 * 2.4 * remaining_distance).sqrt();
+        const BRAKE_NOTCH_COUNT: i32 = 31;
+        const MAX_DECELERATION: f32 = 3.50;
+
+        /* let target_speed = 
+            (7.2 * 2.4 * remaining_distance).sqrt(); */
+        let target_speed = self.ato_tasc_target_speed(remaining_distance);
         
-        println!("残距離: {:.2} 目標速度: {:.2} 速度差: {:.2} 実際減速度: {:.2}({:.2})", remaining_distance, target_speed, target_speed - state.speed, self.before_acceleration, self.before_acceleration.abs() - 2.5);
         if target_speed.is_nan() {
             return self.before_ato_notch;
         }
         if target_speed > state.speed + 5.0 {
             return self.ato_constant_speed(state);
         }
-        if target_speed + 1.0 > state.speed && target_speed - (target_speed / 16.0).min(5.0) <= state.speed && self.now_brake != 0 && self.before_acceleration.abs() - 2.5 < 0.4 {
-            return self.before_ato_notch;
+        self.is_not_one_time_braking = true;
+
+        let mut output_deceleration = (state.speed.powi(2)/(2.0*remaining_distance)) * (1000.0/3600.0);
+        if state.speed > 5.0 {
+            output_deceleration = (1.0 / 7.2) * ((state.speed.powi(2) - self.ato_tasc_target_speed(remaining_distance / 2.0).powi(2)) / (remaining_distance / 2.0));
+        }
+        let mut output_brake = output_deceleration / MAX_DECELERATION * BRAKE_NOTCH_COUNT as f32; 
+
+        { // 速度超過時のブレーキ補填
+            output_brake -= ((target_speed - state.speed) / 1.0).clamp(-10.0, 10.0);
         }
 
-        let output_deceleration = (state.speed.powi(2)/(2.0*remaining_distance)) * (1000.0/3600.0);
-        let output_brake = output_deceleration / 3.5 * 7.0; 
-
         self.now_power = 0;
-        self.now_brake = (output_brake.round() as i32).clamp(0, 7);
+        self.now_brake = (output_brake.round() as i32).clamp(0, 31);
 
         AtsHandles {
             power: self.now_power,
             brake: self.now_brake,
             reverser: 1,
             constant_speed: AtsConstantSpeed::Disable as i32
+        }
+    }
+    
+    /// 残距離とTASCパターンから目標速度を求める関数
+    fn ato_tasc_target_speed(&self, remaining_distance: f32) -> f32 {
+        return (7.2 * 2.30 * remaining_distance).sqrt();
+
+        match self.status {
+            ATOStatus::TASC90(_, _, _) => {
+                let deceleration = 2.00;
+                (7.2 * deceleration * (33.625 + remaining_distance)).sqrt()
+            }
+            ATOStatus::TASC1(_, _, _) => {
+                let deceleration = 2.25;
+                (7.2 * deceleration * (-8.500 + remaining_distance)).sqrt()
+            }
+            ATOStatus::TASC2(_, _, _) | 
+            ATOStatus::P3(_, _, _) => {
+                let deceleration = 1.50;
+                (7.2 * deceleration * remaining_distance).sqrt()
+            }
+            _ => 0.0
         }
     }
 }

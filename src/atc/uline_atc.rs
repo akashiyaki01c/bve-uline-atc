@@ -1,5 +1,6 @@
 use ::bveats_rs::*;
-use crate::{atc::{atc_signal::*, auto_brake::elapse_hisetsu_brake, speed_control::{is_constant_speed, is_holding_speed}}, ato::uline_ato::ULineATO, tims::TIMS};
+use crate::{atc::{atc_signal::*, auto_brake::elapse_hisetsu_brake, speed_control::{is_constant_speed, is_holding_speed}}, ato::uline_ato::ULineATO, settings::Settings, tims::TIMS, DLL_PATH};
+use std::path::PathBuf;
 
 use super::{auto_brake::elapse_atc_brake, speed_control::{constant_and_holding_speed, is_air_holding_speed}};
 
@@ -181,12 +182,19 @@ pub struct ULineATC {
     /// ATC開放中か
     atc_disable: bool,
 
+    /// 戸閉保安が待機中か
+    wait_door_close_security: bool,
+    /// 戸閉時刻
+    door_close_time: i32,
+
     /// ATO
-    ato: ULineATO
+    ato: ULineATO,
+
+    settings: Settings,
 }
 
 impl ULineATC {
-    fn elapse_display(&mut self, _state: AtsVehicleState, handles: &AtsHandles) {
+    fn elapse_display(&mut self, _state: AtsVehicleState, _handles: &AtsHandles) {
         for i in 31..=38 { self.tims_panel[i] = 0; }
         match self.now_signal {
             AtcSignal::Signal02 => self.tims_panel[31] = 1,
@@ -199,11 +207,13 @@ impl ULineATC {
             AtcSignal::Signal90 => self.tims_panel[38] = 1,
             _ => {}
         }
+        self.tims_panel[9] = (self.man_power+3).min(7);
+        self.tims_panel[10] = (self.man_brake).min(8);
         for i in 0..8 {
-            self.tims_panel[11+i] = POWER_PATTERN[(handles.power as usize)+3][i];
+            self.tims_panel[11+i] = POWER_PATTERN[((self.man_power as usize)+3).min(7)][i];
         }
         for i in 0..9 {
-            self.tims_panel[21+i] = BRAKE_PATTERN[handles.brake as usize][i];
+            self.tims_panel[21+i] = BRAKE_PATTERN[((self.man_brake as usize)).min(8)][i];
         }
         self.tims_panel[40] = if self.enable_02hijo_unten { 1 } else { 0 };
         self.tims_panel[41] = if self.enable_01kakunin_unten { 1 } else { 0 };
@@ -237,12 +247,45 @@ impl ULineATC {
             AtcStatus::ATO => self.tims_panel[45] = 1,
         }
     }
+
+    fn get_dll_directory() -> Option<PathBuf> {
+        (*DLL_PATH).clone()
+    }
+    
 }
 
 impl BveAts for ULineATC {
 
     fn load(&mut self) {
         println!("Load");
+
+        let dll_directory = match Self::get_dll_directory() {
+            Some(dir) => dir,
+            None => {
+                println!("[ERROR] get_dll_directory() に 失敗しました。");
+                self.settings = Settings::default();
+                return
+            },
+        };    
+        let config_path = dll_directory.join("uline.toml");
+        let config_data = match std::fs::read_to_string(&config_path) {
+            Ok(data) => data,
+            Err(_) => {
+                println!("[ERROR] 設定ファイルの読み込み に 失敗しました。({:?})", config_path);
+                self.settings = Settings::default();
+                return
+            },
+        };
+        let settings: Settings = match toml::from_str(&config_data) {
+            Ok(config) => config,
+            Err(_) => {
+                println!("[ERROR] TOMLのパース に 失敗しました。");
+                self.settings = Settings::default();
+                return
+            },
+        };
+        println!("{:?}", settings); 
+
         self.tims.load();
         self.ato.load();
     }
@@ -288,8 +331,8 @@ impl BveAts for ULineATC {
             }
         } else {
             AtsHandles {
-                brake: self.man_brake,
-                power: self.man_power,
+                brake: (self.man_brake * 31 / 7).clamp(0, 31),
+                power: (self.man_power * 31 / 4).clamp(0, 31),
                 reverser: self.man_reverser,
                 constant_speed: AtsConstantSpeed::Continue as i32
             }
@@ -331,6 +374,18 @@ impl BveAts for ULineATC {
         } else {
             sound[2] = AtsSound::Continue as i32;
         }
+
+        if self.wait_door_close_security && self.door_close_time == 0 {
+            self.door_close_time = state.time;
+        }
+        if self.wait_door_close_security && self.door_close_time + 10000 < state.time {
+            self.wait_door_close_security = false;
+            self.door_close_time = 0;
+            sound[20] = AtsSound::Play as i32;
+        } else {
+            sound[20] = AtsSound::Continue as i32;
+        }
+
         self.elapse_display(state, &display_handles);
         self.tims.elapse(state, &mut (*self.tims_panel).as_mut_slice(), sound);
 
@@ -485,11 +540,14 @@ impl BveAts for ULineATC {
     }
     fn door_open(&mut self) {
         println!("DoorOpen");
+        self.wait_door_close_security = false;
+        self.door_close_time = 0;
         self.tims.door_open();
         self.ato.door_open();
     }
     fn door_close(&mut self) {
         println!("DoorClose");
+        self.wait_door_close_security = true;
         self.tims.door_close();
         self.ato.door_close();
     }
@@ -533,7 +591,10 @@ impl Default for ULineATC {
             tims_panel: Box::new([0; ELAPSE_PANEL_SIZE]),
             tims_panel_updated_time: 0,
             atc_disable: false,
-            ato: ULineATO::default()
+            ato: ULineATO::default(),
+            wait_door_close_security: false,
+            door_close_time: 0,
+            settings: Settings::default()
         }
     }
 }
