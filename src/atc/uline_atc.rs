@@ -1,6 +1,9 @@
 use ::bveats_rs::*;
-use crate::{atc::{atc_signal::*, auto_brake::elapse_hisetsu_brake, speed_control::{is_constant_speed, is_holding_speed}}, ato::uline_ato::ULineATO, settings::Settings, tims::TIMS, DLL_PATH};
+use crate::{atc::{atc_signal::*, auto_brake::elapse_hisetsu_brake, speed_control::{is_constant_speed, is_holding_speed}}, ato::uline_ato::ULineATO, settings::Settings, tims::TIMS};
 use std::path::PathBuf;
+use log::{error, info, debug};
+#[cfg(windows)]
+use crate::DLL_PATH;
 
 use super::{auto_brake::elapse_atc_brake, speed_control::{constant_and_holding_speed, is_air_holding_speed}};
 
@@ -248,6 +251,7 @@ impl ULineATC {
         }
     }
 
+    #[cfg(windows)]
     fn get_dll_directory() -> Option<PathBuf> {
         (*DLL_PATH).clone()
     }
@@ -257,60 +261,68 @@ impl ULineATC {
 impl BveAts for ULineATC {
 
     fn load(&mut self) {
-        println!("Load");
+        colog::init();
+        info!("called Load()");
 
-        let dll_directory = match Self::get_dll_directory() {
-            Some(dir) => dir,
-            None => {
-                println!("[ERROR] get_dll_directory() に 失敗しました。");
-                self.settings = Settings::default();
-                return
-            },
-        };    
-        let config_path = dll_directory.join("uline.toml");
-        let config_data = match std::fs::read_to_string(&config_path) {
-            Ok(data) => data,
-            Err(_) => {
-                println!("[ERROR] 設定ファイルの読み込み に 失敗しました。({:?})", config_path);
-                self.settings = Settings::default();
-                return
-            },
-        };
-        let settings: Settings = match toml::from_str(&config_data) {
-            Ok(config) => config,
-            Err(_) => {
-                println!("[ERROR] TOMLのパース に 失敗しました。");
-                self.settings = Settings::default();
-                return
-            },
-        };
-        println!("{:?}", settings); 
+        {
+            #[cfg(windows)]
+            let dll_directory = match Self::get_dll_directory() {
+                Some(dir) => dir,
+                None => {
+                    error!("get_dll_directory() に 失敗しました。");
+                    self.settings = Settings::default();
+                    return
+                },
+            };
+            #[cfg(not(windows))]
+            let dll_directory = PathBuf::new();
+
+            let config_path = dll_directory.join("uline.toml");
+            let config_data = match std::fs::read_to_string(&config_path) {
+                Ok(data) => data,
+                Err(_) => {
+                    error!("設定ファイルの読み込みに失敗しました。({:?})", config_path);
+                    self.settings = Settings::default();
+                    return
+                },
+            };
+            let settings: Settings = match toml::from_str(&config_data) {
+                Ok(config) => config,
+                Err(_) => {
+                    error!("設定ファイルのパースに失敗しました。");
+                    self.settings = Settings::default();
+                    return
+                },
+            };
+            debug!("{:?}", settings); 
+        }
 
         self.tims.load();
         self.ato.load();
     }
     fn dispose(&mut self) {
-        println!("Dispose");
+        info!("called Dispose()");
         self.tims.dispose();
         self.ato.dispose();
     }
     fn get_plugin_version(&mut self) -> i32 { 
-        println!("GetPluginVersion"); 
+        info!("called GetPluginVersion()"); 
         ATS_VERSION 
     }
     fn set_vehicle_spec(&mut self, spec: AtsVehicleSpec) {
-        println!("SetVehicleSpec: {:?}", spec);
+        info!("called SetVehicleSpec( {spec:?} )");
         self.vehicle_spec = spec.clone();
         self.tims.set_vehicle_spec(spec);
         self.ato.set_vehicle_spec(spec);
     }
     fn initialize(&mut self, handle: AtsInit) {
-        println!("Initialize: {:?}", handle);
+        info!("called Initialize( {handle:?} )");
         self.tims.initialize(handle);
         self.ato.initialize(handle);
     }
 
     fn elapse(&mut self, state: AtsVehicleState, panel: &mut [i32], sound: &mut [i32]) -> AtsHandles {
+        debug!("called Elapse( {state:?} )");
         if self.time > state.time {
             self.tims_panel_updated_time = 0;
             self.tims.out_of_service_sound_time = 0;
@@ -400,7 +412,7 @@ impl BveAts for ULineATC {
         control_handles
     }
     fn set_power(&mut self, notch: i32) {
-        println!("SetPower: {:?}", notch);
+        info!("called SetPower( {notch} )");
         self.is_constant_control = is_constant_speed(self.speed, self.man_power, notch);
         self.is_holding_control = is_holding_speed(self.speed, self.man_power, notch);
         self.man_power = notch;
@@ -408,7 +420,7 @@ impl BveAts for ULineATC {
         self.ato.set_power(notch);
     }
     fn set_brake(&mut self, notch: i32) {
-        println!("SetBrake: {:?}", notch);
+        info!("called SetBrake( {notch} )");
         self.man_brake = notch;
         if notch == self.vehicle_spec.brake_notches + 1 && self.speed > 5.0 {
             self.is_emg_brake_sound = true;
@@ -418,13 +430,13 @@ impl BveAts for ULineATC {
         self.ato.set_brake(notch);
     }
     fn set_reverser(&mut self, notch: i32) {
-        println!("SetReverser: {:?}", notch);
+        info!("called SetReverser( {notch} )");
         self.man_reverser = notch;
         self.tims.set_reverser(notch);
         self.ato.set_brake(notch);
     }
     fn key_down(&mut self, key: AtsKey) {
-        println!("KeyDown: {:?}", key);
+        info!("called KeyDown( {key:?} )");
         match key {
             AtsKey::D => { // 2 非常運転
                 self.enable_01kakunin_unten = false;
@@ -436,11 +448,11 @@ impl BveAts for ULineATC {
             }
             AtsKey::C1 => { // PageUp 運転切換スイッチ左
                 self.atc_status = self.atc_status.get_left_status();
-                println!("[ATCStatusChange] {:?}", self.atc_status);
+                info!("[ATCStatusChange] {:?}", self.atc_status);
             }
             AtsKey::C2 => { // PageDown 運転切換スイッチ右
                 self.atc_status = self.atc_status.get_right_status();
-                println!("[ATCStatusChange] {:?}", self.atc_status);
+                info!("[ATCStatusChange] {:?}", self.atc_status);
             }
             AtsKey::H => { // 6 非常放送 信号待ち
                 if let EmgSoundKeyDown::None = self.emg_sound_keydown {
@@ -523,7 +535,7 @@ impl BveAts for ULineATC {
         self.ato.key_down(key);
     }
     fn key_up(&mut self, key: AtsKey) {
-        println!("KeyUp: {:?}", key);
+        info!("called KeyUp( {key:?} )");
         match key {
             AtsKey::H | AtsKey::I | AtsKey::J | AtsKey::K | AtsKey::L => {
                 self.emg_sound_keydown = EmgSoundKeyDown::None
@@ -534,25 +546,25 @@ impl BveAts for ULineATC {
         self.ato.key_up(key);
     }
     fn horn_blow(&mut self, horn_type: AtsHorn) {
-        println!("HornBlow: {:?}", horn_type);
+        info!("called HornBlow( {horn_type:?} )");
         self.tims.horn_blow(horn_type);
         self.ato.horn_blow(horn_type);
     }
     fn door_open(&mut self) {
-        println!("DoorOpen");
+        info!("called DoorOpen()");
         self.wait_door_close_security = false;
         self.door_close_time = 0;
         self.tims.door_open();
         self.ato.door_open();
     }
     fn door_close(&mut self) {
-        println!("DoorClose");
+        info!("called DoorClose()");
         self.wait_door_close_security = true;
         self.tims.door_close();
         self.ato.door_close();
     }
     fn set_signal(&mut self, signal: i32) {
-        println!("SetSignal: {:?}", signal);
+        info!("called SetSignal( {signal} )");
         if 0 <= signal && signal <= 7 {
             self.now_signal = unsafe { std::mem::transmute(signal as u8) };
             self.is_changing_signal = true;
@@ -561,7 +573,7 @@ impl BveAts for ULineATC {
         }
     }
     fn set_beacon_data(&mut self, data: AtsBeaconData) {
-        println!("SetBeaconData: {:?}", data);
+        info!("called SetBeaconData( {data:?} )");
         self.tims.set_beacon_data(data);
         self.ato.set_beacon_data(data);
     }

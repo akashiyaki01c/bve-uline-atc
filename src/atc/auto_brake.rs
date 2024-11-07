@@ -2,7 +2,6 @@ use bveats_rs::{AtsConstantSpeed, AtsHandles, AtsSound, AtsVehicleState};
 
 use super::{atc_signal::AtcSignal, uline_atc::{AtcBrakeStatus, ULineATC}};
 
-const ATS_SOUND_BELL: usize = 2;
 const ATS_SOUND_BUZZER: usize = 3;
 
 /// ATCブレーキなし状態のAtsHandlesを取得

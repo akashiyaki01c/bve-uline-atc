@@ -254,7 +254,7 @@ impl TIMS {
                     _ => self.is_position_negative = true,
                 }
             },
-            _ => println!("[ATS_WARN]: 定義されていない地上子番号です。")
+            _ => {}
         }
 	}
 }

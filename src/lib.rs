@@ -6,15 +6,20 @@ mod ato;
 mod tims;
 mod settings;
 
+#[cfg(windows)]
 use std::path::PathBuf;
+#[cfg(windows)]
 use std::sync::LazyLock;
+#[cfg(windows)]
 use winapi::shared::minwindef::{HINSTANCE, DWORD, BOOL, TRUE};
+#[cfg(windows)]
 use winapi::um::winnt::DLL_PROCESS_ATTACH;
 
 use ::bveats_rs::*;
 
 ats_main!(crate::atc::uline_atc::ULineATC);
 
+#[cfg(windows)]
 static DLL_PATH: LazyLock<Option<PathBuf>> = LazyLock::new(|| {
     let mut buffer = vec![0u8; 260];
     let len = unsafe {
@@ -29,9 +34,11 @@ static DLL_PATH: LazyLock<Option<PathBuf>> = LazyLock::new(|| {
     }
 });
 
+#[cfg(windows)]
 static mut DLL_HANDLE: HINSTANCE = std::ptr::null_mut();
 
 #[no_mangle]
+#[cfg(windows)]
 extern "system" fn DllMain(hinst_dll: HINSTANCE, fdw_reason: DWORD, _: *mut std::ffi::c_void) -> BOOL {
     match fdw_reason {
         DLL_PROCESS_ATTACH => unsafe {
