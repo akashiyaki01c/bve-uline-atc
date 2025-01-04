@@ -15,3 +15,6 @@ log = "0.4.22"
 serde = { version = "1.0.214", features = ["derive"] }
 toml = "0.8.19"
 winapi = { version = "0.3", features = ["winuser", "libloaderapi", ] }
+
+[build]
+target = "x86_64-pc-windows-gnu"
