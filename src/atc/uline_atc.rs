@@ -288,8 +288,8 @@ impl BveAts for ULineATC {
             };
             let settings: Settings = match toml::from_str(&config_data) {
                 Ok(config) => config,
-                Err(_) => {
-                    error!("設定ファイルのパースに失敗しました。");
+                Err(err) => {
+                    error!("設定ファイルのパースに失敗しました。 {err}");
                     self.settings = Settings::default();
                     return
                 },
