@@ -80,36 +80,7 @@ impl BveAts for ULineATO {
                     self.status = ATOStatus::ConstantSpeed;
                 }
 
-                let operatable100 = || {
-                    let result = (state.time - self.recent_operation_time) > 100;
-                    result
-                };
-                if self.now_brake != 0 {
-                    if operatable100() {
-                        self.now_brake = 0;
-                        self.recent_operation_time = state.time;
-                    }
-                } else {
-                    if operatable100() {
-                        self.now_power += 1;
-                        self.recent_operation_time = state.time;
-                    }
-                }
-
-                self.now_power = self.now_power.clamp(0, 31);
-                self.now_brake = self.now_brake.clamp(0, 31);
-
-
-                self.before_time = state.time;
-                self.before_speed = state.speed;
-                self.before_acceleration = acceleration_km_h_s;
-
-                AtsHandles {
-                    power: self.now_power,
-                    brake: 0,
-                    reverser: 1,
-                    constant_speed: 0
-                }
+                self.ato_constant_speed_new(state)
             }
             ATOStatus::ConstantSpeed => {
                 let result = self.ato_constant_speed(state);
@@ -369,120 +340,30 @@ impl BveAts for ULineATO {
 
 impl ULineATO {
     fn ato_constant_speed(&mut self, state: AtsVehicleState) -> AtsHandles {
+        self.ato_constant_speed_new(state)
+    }
+    
+    fn ato_constant_speed_new(&mut self, state: AtsVehicleState) -> AtsHandles {
         let delta = state.time - self.before_time;
         let acceleration_km_h_s = (state.speed - self.before_speed) / (delta as f32 / 1000.0);
-        // let acceleration_acceleration = (acceleration_km_h_s - self.before_acceleration) / (delta as f32 / 1000.0);
 
-        let atc_brake =  state.speed > self.signal.getSpeed() as f32;
+        let speed_2second = state.speed + (acceleration_km_h_s * 1.0);
         let target_speed = self.signal.getSpeed() - 3; // ATO目標速度
-        let target_relative_speed = state.speed - target_speed as f32; // ATO目標速度からの相対速度
+        let speed_diff = target_speed as f32 - speed_2second;
+        let mut notch = (speed_diff / 0.4) as i32;
 
-        // ATCブレーキチェック
-        if atc_brake {
-            self.now_power = 0;
-        }
+        notch += ((speed_diff) / 0.75).clamp(-10.0, 10.0) as i32;
 
-        if atc_brake {
-            return AtsHandles {
-                power: 0,
-                brake: 0,
-                reverser: 1,
-                constant_speed: AtsConstantSpeed::Disable as i32
-            }
-        }
-        
-        let operatable250 = || {
-            let result = (state.time - self.recent_operation_time) > 250;
-            result
-        };
+        self.now_power =  notch.clamp(0, 31);
+        self.now_brake = -notch.clamp(-31, 0);
 
-        let plus_power = |power: &mut i32, brake: &mut i32| {
-            if *brake == 0 {
-                *power += 1;
-            } else {
-                *brake -= 1;
-            }
-        };
-        let plus_power_weak = |_power: &mut i32, brake: &mut i32| {
-            if *brake == 0 {
-                // *power += 1;
-            } else {
-                *brake -= 1;
-            }
-        };
-        let minus_power = |power: &mut i32, brake: &mut i32| {
-            if *power == 0 {
-                *brake += 1;
-            } else {
-                *power -= 1;
-            }
-        };
-        let minus_power_weak = |power: &mut i32, _brake: &mut i32| {
-            if *power == 0 {
-                // *brake += 1;
-            } else {
-                *power -= 1;
-            }
-        };
-
-        let constant = match target_relative_speed + acceleration_km_h_s * 0.5 {
-            speed if speed < -5.0 => {
-                if operatable250() {
-                    plus_power(&mut self.now_power, &mut self.now_brake);
-                    self.recent_operation_time = state.time;
-                }
-                false
-            }
-            speed if -5.0 <= speed && speed < -3.0 => {
-                if operatable250() {
-                    if acceleration_km_h_s <= -1.0 {
-                        plus_power_weak(&mut self.now_power, &mut self.now_brake);
-                    } else if acceleration_km_h_s >= 1.0 {
-                        minus_power(&mut self.now_power, &mut self.now_brake);
-                    }
-                    self.recent_operation_time = state.time;
-                }
-                false
-            }
-            speed if -3.0 <= speed && speed < 1.5 => {
-                if operatable250() {
-                    self.recent_operation_time = state.time;
-                }
-                true
-            }
-            speed if 1.5 <= speed && speed < 3.0 => {
-                if operatable250() {
-                    if acceleration_km_h_s <= -1.0 {
-                        // plus_power(&mut self.now_power, &mut self.now_brake);
-                    } else if acceleration_km_h_s >= 1.0 {
-                        minus_power_weak(&mut self.now_power, &mut self.now_brake);
-                    }
-                    self.recent_operation_time = state.time;
-                }
-                false
-            }
-            speed if 3.0 <= speed => {
-                if operatable250() {
-                    minus_power(&mut self.now_power, &mut self.now_brake);
-                    self.recent_operation_time = state.time;
-                }
-                false
-            }
-            _ => { false }
-        };
-
-        self.now_power = self.now_power.clamp(0, 31);
-        self.now_brake = self.now_brake.clamp(0, 31);
-        if constant {
-            self.now_brake = 0;
-            self.now_power = 0;
-        }
+        info!("[CONSTANT] {:?}→{:?}", self.now_power, self.now_brake);
 
         AtsHandles {
             power: self.now_power,
             brake: self.now_brake,
             reverser: 1,
-            constant_speed: if constant { AtsConstantSpeed::Enable as i32 } else { AtsConstantSpeed::Disable as i32 }
+            constant_speed: AtsConstantSpeed::Disable as i32
         }
     }
     fn ato_tasc_with_distance(&mut self, state: AtsVehicleState, remaining_distance: f32) -> AtsHandles {
