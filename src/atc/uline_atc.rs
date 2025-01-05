@@ -255,6 +255,37 @@ impl ULineATC {
     fn get_dll_directory() -> Option<PathBuf> {
         (*DLL_PATH).clone()
     }
+
+    fn get_settings_data(&self) -> Settings {
+        #[cfg(windows)]
+        let dll_directory = match Self::get_dll_directory() {
+            Some(dir) => dir,
+            None => {
+                error!("get_dll_directory() に 失敗しました。");
+                self.settings = Settings::default();
+                return
+            },
+        };
+        #[cfg(not(windows))]
+        let dll_directory = PathBuf::new();
+
+        let config_path = dll_directory.join("uline.toml");
+        let config_data = match std::fs::read_to_string(&config_path) {
+            Ok(data) => data,
+            Err(_) => {
+                error!("設定ファイルの読み込みに失敗しました。({:?})", config_path);
+                return Default::default();
+            },
+        };
+        let settings: Settings = match toml::from_str(&config_data) {
+            Ok(config) => config,
+            Err(err) => {
+                error!("設定ファイルのパースに失敗しました。 {err}");
+                return Default::default();
+            },
+        };
+        settings
+    }
     
 }
 
@@ -264,38 +295,9 @@ impl BveAts for ULineATC {
         colog::init();
         info!("called Load()");
 
-        {
-            #[cfg(windows)]
-            let dll_directory = match Self::get_dll_directory() {
-                Some(dir) => dir,
-                None => {
-                    error!("get_dll_directory() に 失敗しました。");
-                    self.settings = Settings::default();
-                    return
-                },
-            };
-            #[cfg(not(windows))]
-            let dll_directory = PathBuf::new();
-
-            let config_path = dll_directory.join("uline.toml");
-            let config_data = match std::fs::read_to_string(&config_path) {
-                Ok(data) => data,
-                Err(_) => {
-                    error!("設定ファイルの読み込みに失敗しました。({:?})", config_path);
-                    self.settings = Settings::default();
-                    return
-                },
-            };
-            let settings: Settings = match toml::from_str(&config_data) {
-                Ok(config) => config,
-                Err(err) => {
-                    error!("設定ファイルのパースに失敗しました。 {err}");
-                    self.settings = Settings::default();
-                    return
-                },
-            };
-            debug!("{:?}", settings); 
-        }
+        let settings = self.get_settings_data();
+        debug!("{:?}", &settings); 
+        self.settings = settings;
 
         self.tims.load();
         self.ato.load();
@@ -336,8 +338,8 @@ impl BveAts for ULineATC {
         let default_handles = if self.atc_status == AtcStatus::ATO {
             let handle = self.ato.elapse(state, panel, sound);
             AtsHandles {
-                brake: handle.brake.max(self.man_brake),
-                power: if self.man_brake != 0 { 0 } else { handle.power },
+                brake: handle.brake.max(self.man_brake * 31 / 7),
+                power: if self.man_brake != 0 { 0 } else { self.man_power * 31 / 4 },
                 reverser: handle.reverser,
                 constant_speed: if self.man_brake != 0 { AtsConstantSpeed::Disable as i32 } else { handle.constant_speed }
             }
