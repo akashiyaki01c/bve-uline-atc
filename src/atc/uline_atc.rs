@@ -262,8 +262,7 @@ impl ULineATC {
             Some(dir) => dir,
             None => {
                 error!("get_dll_directory() に 失敗しました。");
-                self.settings = Settings::default();
-                return
+                return Default::default();
             },
         };
         #[cfg(not(windows))]
@@ -285,6 +284,10 @@ impl ULineATC {
             },
         };
         settings
+    }
+
+    fn convert_output_notch(&self, notch: i32) -> i32 {
+        (notch as f32 * 31.0 / 7.0) as i32
     }
     
 }
@@ -337,16 +340,19 @@ impl BveAts for ULineATC {
         // デフォルトのAtsHandles
         let default_handles = if self.atc_status == AtcStatus::ATO {
             let handle = self.ato.elapse(state, panel, sound);
+
+            info!("[ELAPSE] {:?}", handle);
+
             AtsHandles {
-                brake: handle.brake.max(self.man_brake * 31 / 7),
-                power: if self.man_brake != 0 { 0 } else { self.man_power * 31 / 4 },
+                brake: handle.brake.max(self.convert_output_notch(self.man_brake)).clamp(0, 32),
+                power: handle.power.clamp(0, 32),
                 reverser: handle.reverser,
                 constant_speed: if self.man_brake != 0 { AtsConstantSpeed::Disable as i32 } else { handle.constant_speed }
             }
         } else {
             AtsHandles {
-                brake: (self.man_brake * 31 / 7).clamp(0, 31),
-                power: (self.man_power * 31 / 4).clamp(0, 31),
+                brake: (self.man_brake * 31 / 7).clamp(0, 32),
+                power: (self.man_power * 31 / 4).clamp(0, 32),
                 reverser: self.man_reverser,
                 constant_speed: AtsConstantSpeed::Continue as i32
             }

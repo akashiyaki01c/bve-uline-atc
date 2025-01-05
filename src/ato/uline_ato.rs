@@ -113,7 +113,6 @@ impl BveAts for ULineATO {
                         *location = state.location as f32;
                     }
                 }
-                // let result = self.ato_tasc(state, pattern_start_time, 80.0);
                 let result = &self.ato_tasc_with_distance(state, (beacon_location + target_distance) - state.location as f32);
                 self.before_time = state.time;
                 self.before_speed = state.speed;
@@ -172,12 +171,6 @@ impl BveAts for ULineATO {
                 self.before_speed = state.speed;
                 self.before_acceleration = acceleration_km_h_s;
 
-                /* AtsHandles {
-                    power: self.now_power,
-                    brake: self.now_brake,
-                    reverser: 1,
-                    constant_speed: 0
-                } */
                 result.clone()
             }
             ATOStatus::Braking(mut time, signal) => {
@@ -251,7 +244,7 @@ impl BveAts for ULineATO {
             ATOStatus::Stop => {
                 AtsHandles {
                     power: 0,
-                    brake: 7,
+                    brake: 31,
                     reverser: 0,
                     constant_speed: AtsConstantSpeed::Disable as i32
                 }
@@ -370,8 +363,6 @@ impl ULineATO {
 
         self.now_power =  power_notch.clamp(0, 31);
         self.now_brake = -brake_notch.clamp(-31, 0);
-
-        info!("[CONSTANT] {:?}→{:?}", self.now_power, self.now_brake);
 
         AtsHandles {
             power: self.now_power,
