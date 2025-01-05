@@ -4,6 +4,7 @@ mod atc;
 mod ato;
 mod tims;
 mod settings;
+mod timer;
 
 #[cfg(windows)]
 use std::path::PathBuf;

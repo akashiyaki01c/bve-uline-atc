@@ -1,6 +1,7 @@
 
 use bveats_rs::{AtsConstantSpeed, AtsHandles, AtsKey, AtsVehicleState, BveAts};
 use log::info;
+use crate::timer::Timer;
 
 use crate::atc::atc_signal::AtcSignal;
 
@@ -34,7 +35,7 @@ impl Default for ATOStatus {
 }
 
 /// ATOを表す
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct ULineATO {
     status: ATOStatus,
     before_ato_notch: AtsHandles,
@@ -44,10 +45,27 @@ pub struct ULineATO {
     before_time: i32,
     before_speed: f32,
     before_acceleration: f32,
-    recent_operation_time: i32,
-    recent_tasc_operation_time: i32,
+    operation_timer: Timer,
     is_not_one_time_braking: bool,
 }
+impl Default for ULineATO {
+    fn default() -> Self {
+        Self {
+            status: Default::default(),
+            before_ato_notch: Default::default(),
+            signal: Default::default(),
+            now_brake: 0,
+            now_power: 0,
+            before_time: 0,
+            before_speed: 0.0,
+            before_acceleration: 0.0,
+            operation_timer: Timer::new(200),
+            is_not_one_time_braking: false
+        }
+    }
+}
+
+
 impl BveAts for ULineATO {
     fn load(&mut self) {
     }
@@ -189,13 +207,8 @@ impl BveAts for ULineATO {
                     self.status = status;
                 }
 
-                let operatable200 = || {
-                    let result = (state.time - self.recent_operation_time) > 200;
-                    result
-                };
-                if operatable200() {
+                if self.operation_timer.is_ready(state.time) {
                     self.now_brake += 1;
-                    self.recent_operation_time = state.time;
                 }
 
                 self.now_power = self.now_power.clamp(0, 31);
@@ -311,7 +324,6 @@ impl BveAts for ULineATO {
                     let status = ATOStatus::P3(pattern_start_time, beacon_location, target_distance);
                     info!("[ATO] {:?}→{:?}", self.status, status);
                     self.status = status;
-                    self.recent_tasc_operation_time = 0;
                     self.is_not_one_time_braking = false;
                 };
             }
