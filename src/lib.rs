@@ -1,10 +1,10 @@
 #![allow(non_snake_case)]
-#![feature(lazy_cell)]
 
 mod atc;
 mod ato;
 mod tims;
 mod settings;
+mod timer;
 
 #[cfg(windows)]
 use std::path::PathBuf;
