@@ -350,12 +350,14 @@ impl ULineATO {
         let speed_2second = state.speed + (acceleration_km_h_s * 1.0);
         let target_speed = self.signal.getSpeed() - 3; // ATO目標速度
         let speed_diff = target_speed as f32 - speed_2second;
-        let mut notch = (speed_diff / 0.4) as i32;
+        let mut power_notch: i32 = (speed_diff / 0.4) as i32;
+        let mut brake_notch = (speed_diff / 0.3) as i32;
 
-        notch += ((speed_diff) / 0.75).clamp(-10.0, 10.0) as i32;
+        power_notch += ((speed_diff) / 0.75).clamp(-10.0, 10.0) as i32;
+        brake_notch += ((speed_diff) / 0.25).clamp(-10.0, 10.0) as i32;
 
-        self.now_power =  notch.clamp(0, 31);
-        self.now_brake = -notch.clamp(-31, 0);
+        self.now_power =  power_notch.clamp(0, 31);
+        self.now_brake = -brake_notch.clamp(-31, 0);
 
         info!("[CONSTANT] {:?}→{:?}", self.now_power, self.now_brake);
 

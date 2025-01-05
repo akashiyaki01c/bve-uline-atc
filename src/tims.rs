@@ -153,7 +153,7 @@ impl TIMS {
 		let minutes = total_second / 60 % 60;
 		let seconds = total_second % 60;
 
-        _panel[49] = _state.speed as i32;
+        _panel[49] = (_state.speed * 10.0) as i32;
         _panel[50] = _state.bc_pressure as i32;
         _panel[51] = _state.mr_pressure as i32;
         _panel[52] = _state.current.abs() as i32;
