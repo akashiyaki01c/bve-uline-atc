@@ -297,7 +297,7 @@ impl BveAts for ULineATC {
     }
     fn set_vehicle_spec(&mut self, spec: AtsVehicleSpec) {
         info!("called SetVehicleSpec( {spec:?} )");
-        self.vehicle_spec = spec.clone();
+        self.vehicle_spec = spec;
         self.tims.set_vehicle_spec(spec);
         self.ato.set_vehicle_spec(spec);
     }
@@ -342,14 +342,14 @@ impl BveAts for ULineATC {
 
             AtsHandles {
                 brake: brake.max(yokusoku),
-                power: power,
+                power,
                 reverser: self.man_reverser,
                 constant_speed: AtsConstantSpeed::Continue as i32
             }
         };
         // TIMS表示用のAtsHandles (擬似空制抑速を適用しない)
         let display_handles = constant_and_holding_speed(
-            &self,
+            self,
             default_handles, 
             false, 
             false, 
@@ -359,24 +359,24 @@ impl BveAts for ULineATC {
             default_handles
         } else {
             constant_and_holding_speed(
-                &self,
+                self,
                 default_handles, 
                 self.is_constant_control, 
                 self.is_holding_control, 
-                is_air_holding_speed(&self, self.speed, self.man_power))
+                is_air_holding_speed(self, self.speed, self.man_power))
         };
 
         let display_handles = match self.atc_status {
-            AtcStatus::ATO => elapse_atc_brake(self, display_handles.clone(), state, sound),
-            AtcStatus::ATC => elapse_atc_brake(self, display_handles.clone(), state, sound),
-            AtcStatus::Irekae => elapse_atc_brake(self, display_handles.clone(), state, sound),
-            AtcStatus::Hisetsu => elapse_hisetsu_brake(self, display_handles.clone())
+            AtcStatus::ATO => elapse_atc_brake(self, display_handles, state, sound),
+            AtcStatus::ATC => elapse_atc_brake(self, display_handles, state, sound),
+            AtcStatus::Irekae => elapse_atc_brake(self, display_handles, state, sound),
+            AtcStatus::Hisetsu => elapse_hisetsu_brake(self, display_handles)
         };
         let control_handles = match self.atc_status {
-            AtcStatus::ATO => elapse_atc_brake(self, control_handles.clone(), state, sound),
-            AtcStatus::ATC => elapse_atc_brake(self, control_handles.clone(), state, sound),
-            AtcStatus::Irekae => elapse_atc_brake(self, control_handles.clone(), state, sound),
-            AtcStatus::Hisetsu => elapse_hisetsu_brake(self, control_handles.clone())
+            AtcStatus::ATO => elapse_atc_brake(self, control_handles, state, sound),
+            AtcStatus::ATC => elapse_atc_brake(self, control_handles, state, sound),
+            AtcStatus::Irekae => elapse_atc_brake(self, control_handles, state, sound),
+            AtcStatus::Hisetsu => elapse_hisetsu_brake(self, control_handles)
         };
 
         // ATC音関連
@@ -399,7 +399,7 @@ impl BveAts for ULineATC {
         }
 
         self.elapse_display(state, &display_handles);
-        self.tims.elapse(state, &mut (*self.tims_panel).as_mut_slice(), sound);
+        self.tims.elapse(state, (*self.tims_panel).as_mut_slice(), sound);
 
         // タイムラグ用
         if self.tims_panel_updated_time + 250 < state.time {
@@ -413,8 +413,8 @@ impl BveAts for ULineATC {
     }
     fn set_power(&mut self, notch: i32) {
         info!("called SetPower( {notch} )");
-        self.is_constant_control = is_constant_speed(&self, self.speed, self.man_power, notch);
-        self.is_holding_control = is_holding_speed(&self, self.speed, self.man_power, notch);
+        self.is_constant_control = is_constant_speed(self, self.speed, self.man_power, notch);
+        self.is_holding_control = is_holding_speed(self, self.speed, self.man_power, notch);
         self.man_power = notch;
         self.tims.set_power(notch);
         self.ato.set_power(notch);
@@ -565,7 +565,7 @@ impl BveAts for ULineATC {
     }
     fn set_signal(&mut self, signal: i32) {
         info!("called SetSignal( {signal} )");
-        if 0 <= signal && signal <= 7 {
+        if (0..=7).contains(&signal) {
             self.now_signal = unsafe { std::mem::transmute(signal as u8) };
             self.is_changing_signal = true;
             self.tims.set_signal(signal);

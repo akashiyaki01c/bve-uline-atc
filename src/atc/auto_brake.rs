@@ -5,23 +5,23 @@ use super::{atc_signal::AtcSignal, uline_atc::{AtcBrakeStatus, ULineATC}};
 const ATS_SOUND_BUZZER: usize = 3;
 
 /// ATCブレーキなし状態のAtsHandlesを取得
-fn get_none_brake_handle<'a>(_atc: &'a ULineATC, handles: AtsHandles) -> AtsHandles {
+fn get_none_brake_handle(_atc: &ULineATC, handles: AtsHandles) -> AtsHandles {
 	handles
 }
 /// ATC緩和ブレーキ状態のAtsHandlesを取得
-fn get_half_brake_handle<'a>(_atc: &'a ULineATC, mut handles: AtsHandles) -> AtsHandles {
+fn get_half_brake_handle(_atc: &ULineATC, mut handles: AtsHandles) -> AtsHandles {
 	handles.brake = _atc.settings.vehicle.output_brake_notches / 2;
 	handles.constant_speed = AtsConstantSpeed::Disable as i32;
 	handles
 }
 /// ATC常用ブレーキ状態のAtsHandlesを取得
-fn get_full_brake_handle<'a>(_atc: &'a ULineATC, mut handles: AtsHandles) -> AtsHandles {
+fn get_full_brake_handle(_atc: &ULineATC, mut handles: AtsHandles) -> AtsHandles {
 	handles.brake = _atc.settings.vehicle.output_brake_notches;
 	handles.constant_speed = AtsConstantSpeed::Disable as i32;
 	handles
 }
 /// ATC非常ブレーキ状態のAtsHandlesを取得
-fn get_emg_brake_handle<'a>(_atc: &'a ULineATC, mut handles: AtsHandles) -> AtsHandles {
+fn get_emg_brake_handle(_atc: &ULineATC, mut handles: AtsHandles) -> AtsHandles {
 	handles.brake = _atc.settings.vehicle.output_brake_notches + 1;
 	handles.constant_speed = AtsConstantSpeed::Disable as i32;
 	handles
@@ -107,6 +107,6 @@ pub fn elapse_atc_brake<'a>(atc: &'a mut ULineATC, handles: AtsHandles, state: A
 }
 
 /// ATC非設時にElapse内のATCブレーキ判定を行う関数
-pub fn elapse_hisetsu_brake<'a>(_atc: &'a mut ULineATC, handles: AtsHandles) -> AtsHandles {
+pub fn elapse_hisetsu_brake(_atc: &mut ULineATC, handles: AtsHandles) -> AtsHandles {
 	handles
 }

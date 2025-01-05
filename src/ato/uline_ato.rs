@@ -120,7 +120,7 @@ impl BveAts for ULineATO {
                 self.before_time = state.time;
                 self.before_speed = state.speed;
                 self.before_acceleration = acceleration_km_h_s;
-                result.clone()
+                *result
             }
             ATOStatus::TASC2(pattern_start_time, beacon_location, target_distance) => {
                 if state.speed < 1.0 {
@@ -146,7 +146,7 @@ impl BveAts for ULineATO {
                 self.before_time = state.time;
                 self.before_speed = state.speed;
                 self.before_acceleration = acceleration_km_h_s;
-                result.clone()
+                *result
             }
             ATOStatus::TASC90(_pattern_start_time, beacon_location, target_distance) => {
                 // let result = self.ato_tasc(state, pattern_start_time, 95.0);
@@ -159,7 +159,7 @@ impl BveAts for ULineATO {
                 self.before_time = state.time;
                 self.before_speed = state.speed;
                 self.before_acceleration = acceleration_km_h_s;
-                result.clone()
+                *result
             }
             ATOStatus::P3(_pattern_start_time, beacon_location, target_distance) => {
                 let result = &self.ato_tasc_with_distance(state, (beacon_location + target_distance) - state.location as f32);
@@ -174,7 +174,7 @@ impl BveAts for ULineATO {
                 self.before_speed = state.speed;
                 self.before_acceleration = acceleration_km_h_s;
 
-                result.clone()
+                *result
             }
             ATOStatus::Braking(mut time, signal) => {
                 if time == -1 {
@@ -271,16 +271,13 @@ impl BveAts for ULineATO {
     }
 
     fn key_down(&mut self, key: bveats_rs::AtsKey) {
-        match key {
-            AtsKey::S => {
-                if self.before_speed != 0.0 {
-                    return;
-                }
-                let status = ATOStatus::Departure;
-                info!("[ATO] {:?}→{:?}", self.status, status);
-                self.status = status;
+        if key == AtsKey::S {
+            if self.before_speed != 0.0 {
+                return;
             }
-            _ => {}
+            let status = ATOStatus::Departure;
+            info!("[ATO] {:?}→{:?}", self.status, status);
+            self.status = status;
         }
     }
 
