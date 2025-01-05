@@ -7,29 +7,6 @@ use crate::DLL_PATH;
 
 use super::{auto_brake::elapse_atc_brake, speed_control::{constant_and_holding_speed, is_air_holding_speed}};
 
-/// TIMS 力行表示パターン
-const POWER_PATTERN: [[i32; 8]; 8] = [
-    [1, 1, 1, 0, 0, 0, 0, 0], // 抑速3ノッチ
-    [0, 1, 1, 0, 0, 0, 0, 0], // 抑速2ノッチ
-    [0, 0, 1, 0, 0, 0, 0, 0], // 抑速1ノッチ
-    [0, 0, 0, 1, 0, 0, 0, 0], // 切
-    [0, 0, 0, 0, 1, 0, 0, 0], // 力行1ノッチ
-    [0, 0, 0, 0, 1, 1, 0, 0], // 力行2ノッチ
-    [0, 0, 0, 0, 1, 1, 1, 0], // 力行3ノッチ
-    [0, 0, 0, 0, 1, 1, 1, 1], // 力行4ノッチ
-];
-/// TIMS ブレーキ表示パターン
-const BRAKE_PATTERN: [[i32; 9]; 9] = [
-    [1, 0, 0, 0, 0, 0, 0, 0, 0], // 弛め
-    [0, 1, 0, 0, 0, 0, 0, 0, 0], // ブレーキ1ノッチ
-    [0, 1, 1, 0, 0, 0, 0, 0, 0], // ブレーキ2ノッチ
-    [0, 1, 1, 1, 0, 0, 0, 0, 0], // ブレーキ3ノッチ
-    [0, 1, 1, 1, 1, 0, 0, 0, 0], // ブレーキ4ノッチ
-    [0, 1, 1, 1, 1, 1, 0, 0, 0], // ブレーキ5ノッチ
-    [0, 1, 1, 1, 1, 1, 1, 0, 0], // ブレーキ6ノッチ
-    [0, 1, 1, 1, 1, 1, 1, 1, 0], // ブレーキ7ノッチ
-    [0, 1, 1, 1, 1, 1, 1, 1, 1], // 非常ブレーキ
-];
 /// panelのサイズ
 const ELAPSE_PANEL_SIZE: usize = 256;
 
@@ -212,12 +189,12 @@ impl ULineATC {
         }
         self.tims_panel[9] = (self.man_power+3).min(7);
         self.tims_panel[10] = (self.man_brake).min(8);
-        for i in 0..8 {
+        /* for i in 0..8 {
             self.tims_panel[11+i] = POWER_PATTERN[((self.man_power as usize)+3).min(7)][i];
         }
         for i in 0..9 {
             self.tims_panel[21+i] = BRAKE_PATTERN[((self.man_brake as usize)).min(8)][i];
-        }
+        } */
         self.tims_panel[40] = if self.enable_02hijo_unten { 1 } else { 0 };
         self.tims_panel[41] = if self.enable_01kakunin_unten { 1 } else { 0 };
         self.tims_panel[19] = self.is_constant_control as i32;
@@ -286,7 +263,7 @@ impl ULineATC {
         settings
     }
 
-    fn convert_output_notch(&self, notch: i32) -> i32 {
+    pub fn convert_output_notch(&self, notch: i32) -> i32 {
         let input = self.settings.vehicle.input_brake_notches as f32;
         let output = self.settings.vehicle.output_brake_notches as f32;
         (notch as f32 * output / input) as i32
@@ -359,15 +336,20 @@ impl BveAts for ULineATC {
             let output_brake = self.settings.vehicle.output_brake_notches;
             let output_power = self.settings.vehicle.output_power_notches;
 
+            let brake = (self.man_brake * output_brake / input_brake).clamp(0, output_brake + 1);
+            let power = (self.man_power * output_power / input_power).clamp(0, output_power);
+            let yokusoku = (-self.man_power * output_brake / input_brake).clamp(0, output_brake / 2);
+
             AtsHandles {
-                brake: (self.man_brake * output_brake / input_brake).clamp(0, output_brake + 1),
-                power: (self.man_power * output_power / input_power).clamp(0, output_power),
+                brake: brake.max(yokusoku),
+                power: power,
                 reverser: self.man_reverser,
                 constant_speed: AtsConstantSpeed::Continue as i32
             }
         };
         // TIMS表示用のAtsHandles (擬似空制抑速を適用しない)
         let display_handles = constant_and_holding_speed(
+            &self,
             default_handles, 
             false, 
             false, 
@@ -377,6 +359,7 @@ impl BveAts for ULineATC {
             default_handles
         } else {
             constant_and_holding_speed(
+                &self,
                 default_handles, 
                 self.is_constant_control, 
                 self.is_holding_control, 

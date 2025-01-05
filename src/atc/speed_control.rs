@@ -23,37 +23,41 @@ pub fn is_air_holding_speed(atc: &ULineATC, speed: f32, notch: i32) -> bool {
 }
 
 /// 定速制御を適用する関数
-fn constant_speed(mut handles: AtsHandles) -> AtsHandles {
+fn constant_speed(_atc: &ULineATC, mut handles: AtsHandles) -> AtsHandles {
     handles.constant_speed = AtsConstantSpeed::Enable as i32;
 	handles
 }
 
 /// 抑速制御を適用する関数
-fn holding_speed(mut handles: AtsHandles) -> AtsHandles {
+fn holding_speed(_atc: &ULineATC, mut handles: AtsHandles) -> AtsHandles {
     handles.constant_speed = AtsConstantSpeed::Enable as i32;
 	handles.power = 0;
 	handles
 }
 
 /// 空制の抑速制御を適用する関数
-fn air_holding_speed(mut handles: AtsHandles) -> AtsHandles {
-    handles.brake = handles.power.abs().max(handles.brake);
+fn air_holding_speed(atc: &ULineATC, mut handles: AtsHandles) -> AtsHandles {
+    handles.brake = atc.convert_output_notch(handles.power.abs()).max(handles.brake);
 	handles.power = 0;
 	handles.reverser = 0;
 	handles
 }
 
 /// 定速制御/抑速制御の判定を満たした上でAtsHandlesを返す関数
-pub fn constant_and_holding_speed(mut handles: AtsHandles, is_constant_speed: bool, is_holding_speed: bool, is_air_holding_speed: bool) -> AtsHandles {
+pub fn constant_and_holding_speed(atc: &ULineATC, mut handles: AtsHandles, is_constant_speed: bool, is_holding_speed: bool, is_air_holding_speed: bool) -> AtsHandles {
+	if handles.power < 0 {
+		handles.brake = atc.convert_output_notch(-handles.power);
+		handles.power = 0;
+	}
 	if is_constant_speed {
-		handles = constant_speed(handles);
+		handles = constant_speed(atc, handles);
 	} else if is_holding_speed {
-		handles = holding_speed(handles);
+		handles = holding_speed(atc, handles);
 	} else {
 		handles.constant_speed = AtsConstantSpeed::Disable as i32;
 	}
 	if is_air_holding_speed {
-		handles = air_holding_speed(handles);
+		handles = air_holding_speed(atc, handles);
 	}
 
 	handles
