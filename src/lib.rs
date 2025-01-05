@@ -1,5 +1,4 @@
 #![allow(non_snake_case)]
-#![feature(lazy_cell)]
 
 mod atc;
 mod ato;
