@@ -35,7 +35,7 @@ fn enable_atc_brake(signal_speed: f32, vehicle_speed: f32) -> bool {
 /// ATC有効時にElapse内のATCブレーキ判定を行う関数
 pub fn elapse_atc_brake<'a>(atc: &'a mut ULineATC, handles: AtsHandles, state: AtsVehicleState, sound: &'a mut [i32]) -> AtsHandles {
 
-	let enable_auto_brake = enable_atc_brake(atc.now_signal.getSpeed() as f32 - atc.settings.atc.check_speed_margin, state.speed);
+	let enable_auto_brake = enable_atc_brake(atc.now_signal.getSpeed() as f32 + atc.settings.atc.check_speed_margin, state.speed);
 	// ブレーキが掛かった瞬間
 	if atc.atc_brake_status == AtcBrakeStatus::Passing && enable_auto_brake {
 		atc.atc_brake_status = AtcBrakeStatus::HalfBraking(state.time);
