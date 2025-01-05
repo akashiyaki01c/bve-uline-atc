@@ -88,8 +88,6 @@ impl BveAts for ULineATO {
         let acceleration_km_h_s = (state.speed - self.before_speed) / (delta as f32 / 1000.0);
 
         let atc_brake =  state.speed > self.signal.getSpeed() as f32;
-        let target_speed = self.signal.getSpeed() - 5; // ATO目標速度
-
         // ATCブレーキチェック
         if atc_brake {
             self.now_power = 0;
@@ -97,6 +95,7 @@ impl BveAts for ULineATO {
 
         let result = match self.status {
             ATOStatus::Departure => {
+                let target_speed = self.signal.getSpeed() - 5; // ATO目標速度
                 if target_speed as f32 <= state.speed {
                     info!("[ATO] Departure->ConstantSpeed");
                     self.status = ATOStatus::ConstantSpeed;
@@ -129,9 +128,9 @@ impl BveAts for ULineATO {
                     info!("[ATO] {:?}→{:?}", self.status, status);
                     self.status = status;
                 }
-                if state.speed > 25.0 {
+                if state.speed > self.settings.ato.p2_check_speed {
                     return AtsHandles {
-                        brake: 8,
+                        brake: self.settings.vehicle.output_brake_notches + 1,
                         power: 0,
                         reverser: 1,
                         constant_speed: AtsConstantSpeed::Disable as i32,
@@ -192,7 +191,7 @@ impl BveAts for ULineATO {
                     }
                 }
                 // 8秒以上
-                if time + 8000 < state.time {
+                if time + self.settings.ato.p4_brake_time < state.time {
                     let status = ATOStatus::ConstantSpeed;
                     info!("[ATO] {:?}→{:?}", self.status, status);
                     self.status = status;
@@ -220,7 +219,7 @@ impl BveAts for ULineATO {
             }
             ATOStatus::PowerOff(signal) => {
                 // 35km/h以下
-                if state.speed < 35.0 {
+                if state.speed < self.settings.ato.p5_lower_limit_speed {
                     let status = ATOStatus::ConstantSpeed;
                     info!("[ATO] {:?}→{:?}", self.status, status);
                     self.status = status;
@@ -232,6 +231,7 @@ impl BveAts for ULineATO {
                     self.status = status;
                 }
                 // 目標速度-5km/h
+                let target_speed = self.signal.getSpeed() - 3;
                 if target_speed as f32 - 5.0 < state.speed {
                     let status = ATOStatus::ConstantSpeed;
                     info!("[ATO] {:?}→{:?}", self.status, status);
@@ -330,7 +330,7 @@ impl BveAts for ULineATO {
                 self.status = status;
             }
             5 => { // 力行OFF
-                if self.before_speed < 35.0 {
+                if self.before_speed < self.settings.ato.p5_lower_limit_speed {
                     return;
                 }
                 let status = ATOStatus::PowerOff(self.signal);
@@ -376,7 +376,6 @@ impl ULineATO {
         }
     }
     fn ato_tasc_with_distance(&mut self, state: AtsVehicleState, remaining_distance: f32) -> AtsHandles {
-        const BRAKE_NOTCH_COUNT: i32 = 31;
         const MAX_DECELERATION: f32 = 3.50;
 
         let target_speed = self.ato_tasc_target_speed(remaining_distance);
@@ -393,7 +392,7 @@ impl ULineATO {
         if state.speed > 5.0 {
             output_deceleration = (1.0 / 7.2) * ((state.speed.powi(2) - self.ato_tasc_target_speed(remaining_distance / 2.0).powi(2)) / (remaining_distance / 2.0));
         }
-        let mut output_brake = output_deceleration / MAX_DECELERATION * BRAKE_NOTCH_COUNT as f32; 
+        let mut output_brake = output_deceleration / MAX_DECELERATION * self.settings.vehicle.output_brake_notches as f32; 
 
         { // 速度超過時のブレーキ補填
             output_brake -= ((target_speed - state.speed) / 1.0).clamp(-10.0, 10.0);

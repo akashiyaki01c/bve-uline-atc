@@ -380,7 +380,7 @@ impl BveAts for ULineATC {
                 default_handles, 
                 self.is_constant_control, 
                 self.is_holding_control, 
-                is_air_holding_speed(self.speed, self.man_power))
+                is_air_holding_speed(&self, self.speed, self.man_power))
         };
 
         let display_handles = match self.atc_status {
@@ -430,8 +430,8 @@ impl BveAts for ULineATC {
     }
     fn set_power(&mut self, notch: i32) {
         info!("called SetPower( {notch} )");
-        self.is_constant_control = is_constant_speed(self.speed, self.man_power, notch);
-        self.is_holding_control = is_holding_speed(self.speed, self.man_power, notch);
+        self.is_constant_control = is_constant_speed(&self, self.speed, self.man_power, notch);
+        self.is_holding_control = is_holding_speed(&self, self.speed, self.man_power, notch);
         self.man_power = notch;
         self.tims.set_power(notch);
         self.ato.set_power(notch);

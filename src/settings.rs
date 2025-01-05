@@ -71,15 +71,15 @@ impl Default for ATCSettings {
 #[derive(Clone)]
 pub struct ATOSettings {
     /// ATC速度とATO目標速度との差 [km/h]
-    target_speed: f32,
+    pub target_speed: f32,
     /// TASC第2パターン発生時の照査速度 [km/h]
-    p2_check_speed: f32,
+    pub p2_check_speed: f32,
     /// 過速防止の照査速度 [km/h]
-    p3_check_speed: f32,
+    pub p3_check_speed: f32,
     /// 減速制御時の最大減速時間 [ms]
-    p4_brake_time: i32,
+    pub p4_brake_time: i32,
     /// 力行OFF制御時の最低条件速度 [km/h]
-    p5_lower_limit_speed: f32,
+    pub p5_lower_limit_speed: f32,
 }
 impl Default for ATOSettings {
     fn default() -> Self {
@@ -98,7 +98,7 @@ impl Default for ATOSettings {
 #[derive(Clone)]
 pub struct TASCSettings {
     /// 在来車のTASCパターンか
-    is_old_pattern: bool,
+    pub is_old_pattern: bool,
 }
 
 #[derive(Debug, Default)]
@@ -106,7 +106,7 @@ pub struct TASCSettings {
 #[derive(Clone)]
 pub struct TIMSSettings {
     /// TIMS画面の描画速度
-    display_draw_time: i32,
+    pub display_draw_time: i32,
 }
 
 #[derive(Debug, Default)]

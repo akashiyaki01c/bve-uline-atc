@@ -42,7 +42,7 @@ pub fn elapse_atc_brake<'a>(atc: &'a mut ULineATC, handles: AtsHandles, state: A
 	}
 	// 緩和ブレーキからフルブレーキになる瞬間
 	if let AtcBrakeStatus::HalfBraking(time) = atc.atc_brake_status {
-		if time + 700 < state.time {
+		if time + atc.settings.atc.half_brake_time < state.time {
 			atc.atc_brake_status = AtcBrakeStatus::FullBraking;
 		}
 	}
@@ -67,7 +67,7 @@ pub fn elapse_atc_brake<'a>(atc: &'a mut ULineATC, handles: AtsHandles, state: A
 	// 非常運転の場合
 	if atc.enable_02hijo_unten {
 		if atc.now_signal == AtcSignal::Signal02 {
-			if state.speed as i32 <= 15 {
+			if state.speed <= (atc.settings.atc.hijo_limit_speed + atc.settings.atc.check_speed_margin) {
 				atc.atc_brake_status = AtcBrakeStatus::Passing;
 			} else {
 				atc.atc_brake_status = AtcBrakeStatus::FullBraking;
@@ -79,7 +79,7 @@ pub fn elapse_atc_brake<'a>(atc: &'a mut ULineATC, handles: AtsHandles, state: A
 	// 確認運転の場合
 	if atc.enable_01kakunin_unten {
 		if atc.now_signal == AtcSignal::Signal01 {
-			if state.speed as i32 <= 25 {
+			if state.speed <= (atc.settings.atc.kakunin_limit_speed + atc.settings.atc.check_speed_margin) {
 				atc.atc_brake_status = AtcBrakeStatus::Passing;
 			} else {
 				atc.atc_brake_status = AtcBrakeStatus::FullBraking;

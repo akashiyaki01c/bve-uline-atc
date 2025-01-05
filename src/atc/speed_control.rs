@@ -2,22 +2,24 @@
 
 use bveats_rs::{AtsConstantSpeed, AtsHandles};
 
+use super::uline_atc::ULineATC;
+
 /// 定速制御の条件を満たしているかを判断する関数
 /// (速度が15km/h以上で、P4→P3に戻された時に条件を満たす)
-pub fn is_constant_speed(speed: f32, beforeNotch: i32, afterNotch: i32) -> bool {
-	speed >= 15.0 && beforeNotch == 4 && afterNotch == 3
+pub fn is_constant_speed(atc: &ULineATC, speed: f32, beforeNotch: i32, afterNotch: i32) -> bool {
+	speed >= atc.settings.vehicle.constant_start_speed && beforeNotch == 4 && afterNotch == 3
 }
 
 /// 抑速制御の条件を満たしているかを判断する関数
 /// (速度が25km/h以上で、B2→B1に戻された時に条件を満たす)
-pub fn is_holding_speed(speed: f32, beforeNotch: i32, afterNotch: i32) -> bool {
-	speed >= 25.0 && beforeNotch == -2 && afterNotch == -1
+pub fn is_holding_speed(atc: &ULineATC, speed: f32, beforeNotch: i32, afterNotch: i32) -> bool {
+	speed >= atc.settings.vehicle.yokusoku_start_speed && beforeNotch == -2 && afterNotch == -1
 }
 
 /// 空制の抑速制御の条件を満たしているかを判断する関数
 /// (速度が25km/h以下で、抑速ノッチが投入されている時に条件を満たす)
-pub fn is_air_holding_speed(speed: f32, notch: i32) -> bool {
-	speed < 25.0 && notch < 0
+pub fn is_air_holding_speed(atc: &ULineATC, speed: f32, notch: i32) -> bool {
+	speed < atc.settings.vehicle.yokusoku_start_speed && notch < 0
 }
 
 /// 定速制御を適用する関数
