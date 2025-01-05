@@ -1,6 +1,7 @@
 
 use bveats_rs::{AtsConstantSpeed, AtsHandles, AtsKey, AtsVehicleState, BveAts};
 use log::info;
+use crate::settings::Settings;
 use crate::timer::Timer;
 
 use crate::atc::atc_signal::AtcSignal;
@@ -47,6 +48,8 @@ pub struct ULineATO {
     before_acceleration: f32,
     operation_timer: Timer,
     is_not_one_time_braking: bool,
+
+    pub settings: Settings,
 }
 impl Default for ULineATO {
     fn default() -> Self {
@@ -60,7 +63,8 @@ impl Default for ULineATO {
             before_speed: 0.0,
             before_acceleration: 0.0,
             operation_timer: Timer::new(200),
-            is_not_one_time_braking: false
+            is_not_one_time_braking: false,
+            settings: Default::default(),
         }
     }
 }

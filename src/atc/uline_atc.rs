@@ -193,7 +193,7 @@ pub struct ULineATC {
     /// ATO
     ato: ULineATO,
 
-    settings: Settings,
+    pub settings: Settings,
 }
 
 impl ULineATC {
@@ -287,7 +287,9 @@ impl ULineATC {
     }
 
     fn convert_output_notch(&self, notch: i32) -> i32 {
-        (notch as f32 * 31.0 / 7.0) as i32
+        let input = self.settings.vehicle.input_brake_notches as f32;
+        let output = self.settings.vehicle.output_brake_notches as f32;
+        (notch as f32 * output / input) as i32
     }
     
 }
@@ -301,6 +303,8 @@ impl BveAts for ULineATC {
         let settings = self.get_settings_data();
         debug!("{:?}", &settings); 
         self.settings = settings;
+
+        self.ato.settings = self.settings.clone();
 
         self.tims.load();
         self.ato.load();
@@ -350,9 +354,14 @@ impl BveAts for ULineATC {
                 constant_speed: if self.man_brake != 0 { AtsConstantSpeed::Disable as i32 } else { handle.constant_speed }
             }
         } else {
+            let input_brake = self.settings.vehicle.input_brake_notches;
+            let input_power = self.settings.vehicle.input_power_notches;
+            let output_brake = self.settings.vehicle.output_brake_notches;
+            let output_power = self.settings.vehicle.output_power_notches;
+
             AtsHandles {
-                brake: (self.man_brake * 31 / 7).clamp(0, 32),
-                power: (self.man_power * 31 / 4).clamp(0, 32),
+                brake: (self.man_brake * output_brake / input_brake).clamp(0, output_brake + 1),
+                power: (self.man_power * output_power / input_power).clamp(0, output_power),
                 reverser: self.man_reverser,
                 constant_speed: AtsConstantSpeed::Continue as i32
             }
