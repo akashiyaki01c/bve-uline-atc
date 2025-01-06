@@ -4,11 +4,17 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize)]
 #[derive(Clone)]
 pub struct Settings {
+    #[serde(default)]
     pub vehicle: VehicleSettings,
+    #[serde(default)]
     pub atc: ATCSettings,
+    #[serde(default)]
     pub ato: ATOSettings,
+    #[serde(default)]
     pub tasc: TASCSettings,
+    #[serde(default)]
     pub tims: TIMSSettings,
+    #[serde(default)]
     pub sound: SoundSettings,
 }
 

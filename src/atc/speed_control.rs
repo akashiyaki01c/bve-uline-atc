@@ -84,8 +84,8 @@ pub fn atc_constant_speed(atc: &ULineATC) -> AtsHandles {
 	let mut power_notch: i32 = (speed_diff / 0.4) as i32;
 	let mut brake_notch = (speed_diff / 0.3) as i32;
 
-	power_notch += ((speed_diff) / 0.75).clamp(-10.0, 10.0) as i32;
-	brake_notch += ((speed_diff) / 0.25).clamp(-10.0, 10.0) as i32;
+	power_notch += ((speed_diff) / 0.50).clamp(-10.0, 10.0) as i32;
+	brake_notch += ((speed_diff) / 0.50).clamp(-10.0, 10.0) as i32;
 
 	AtsHandles {
 		power: power_notch.clamp(0, 31),

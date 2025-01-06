@@ -329,9 +329,6 @@ impl BveAts for ULineATC {
         // デフォルトのAtsHandles
         let default_handles = if self.atc_status == AtcStatus::ATO {
             let handle = self.ato.elapse(state, panel, sound);
-
-            info!("[ELAPSE] {:?}", handle);
-
             AtsHandles {
                 brake: handle.brake.max(self.convert_output_notch(self.man_brake)).clamp(0, 32),
                 power: handle.power.clamp(0, 32),
