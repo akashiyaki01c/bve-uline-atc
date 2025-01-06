@@ -404,7 +404,7 @@ impl ULineATO {
     
     /// 残距離とTASCパターンから目標速度を求める関数
     fn ato_tasc_target_speed(&self, remaining_distance: f32) -> f32 {
-        if true {
+        if !self.settings.tasc.is_old_pattern {
             (7.2 * 2.30 * remaining_distance).sqrt()
         } else {
             match self.status {
