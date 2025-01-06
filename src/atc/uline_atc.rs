@@ -407,7 +407,7 @@ impl BveAts for ULineATC {
         self.tims.elapse(state, (*self.tims_panel).as_mut_slice(), sound);
 
         // タイムラグ用
-        if self.tims_panel_updated_time + 250 < state.time {
+        if self.tims_panel_updated_time + self.settings.tims.display_draw_time < state.time {
             self.tims_panel_updated_time = state.time;
             for i in 0..(panel.len().min(self.tims_panel.len())) {
                 panel[i] = self.tims_panel[i];
