@@ -174,6 +174,8 @@ pub struct ULineATC {
     pub before_speed: f32,
     pub before_acceleration: f32,
 
+    pub constant_target_speed: f32,
+
     pub settings: Settings,
 }
 
@@ -620,6 +622,7 @@ impl Default for ULineATC {
             before_time: 0,
             before_speed: 0.0,
             before_acceleration: 0.0,
+            constant_target_speed: 0.0,
         }
     }
 }
