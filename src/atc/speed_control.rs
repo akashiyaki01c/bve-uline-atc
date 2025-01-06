@@ -1,6 +1,6 @@
 //! 定速制御/抑速制御を制御する関数群
 
-use bveats_rs::{AtsConstantSpeed, AtsHandles};
+use bveats_rs::{AtsConstantSpeed, AtsHandles, AtsVehicleState};
 
 use super::uline_atc::ULineATC;
 
@@ -23,9 +23,10 @@ pub fn is_air_holding_speed(atc: &ULineATC, speed: f32, notch: i32) -> bool {
 }
 
 /// 定速制御を適用する関数
-fn constant_speed(_atc: &ULineATC, mut handles: AtsHandles) -> AtsHandles {
-    handles.constant_speed = AtsConstantSpeed::Enable as i32;
-	handles
+fn constant_speed(_atc: &ULineATC, handles: AtsHandles) -> AtsHandles {
+    /* handles.constant_speed = AtsConstantSpeed::Enable as i32;
+	handles */
+	ato_constant_speed(_atc)
 }
 
 /// 抑速制御を適用する関数
@@ -61,4 +62,25 @@ pub fn constant_and_holding_speed(atc: &ULineATC, mut handles: AtsHandles, is_co
 	}
 
 	handles
+}
+
+pub fn ato_constant_speed(atc: &ULineATC) -> AtsHandles {
+	let delta = atc.time - atc.before_time;
+	let acceleration_km_h_s = (atc.speed - atc.before_speed) / (delta as f32 / 1000.0);
+
+	let speed_2second = atc.speed + (acceleration_km_h_s * 1.0);
+	let target_speed = atc.now_signal.getSpeed() - 3; // ATO目標速度
+	let speed_diff = target_speed as f32 - speed_2second;
+	let mut power_notch: i32 = (speed_diff / 0.4) as i32;
+	let mut brake_notch = (speed_diff / 0.3) as i32;
+
+	power_notch += ((speed_diff) / 0.75).clamp(-10.0, 10.0) as i32;
+	brake_notch += ((speed_diff) / 0.25).clamp(-10.0, 10.0) as i32;
+
+	AtsHandles {
+		power: power_notch.clamp(0, 31),
+		brake: -brake_notch.clamp(-31, 0),
+		reverser: 1,
+		constant_speed: AtsConstantSpeed::Disable as i32
+	}
 }

@@ -170,6 +170,10 @@ pub struct ULineATC {
     /// ATO
     ato: ULineATO,
 
+    pub before_time: i32,
+    pub before_speed: f32,
+    pub before_acceleration: f32,
+
     pub settings: Settings,
 }
 
@@ -315,6 +319,8 @@ impl BveAts for ULineATC {
         }
         self.time = state.time;
         self.speed = state.speed;
+        let delta = state.time - self.before_time;
+        let acceleration_km_h_s = (state.speed - self.before_speed) / (delta as f32 / 1000.0);
         self.show_atc_status(panel);
         self.elapse_emg_sound(sound);
 
@@ -408,6 +414,10 @@ impl BveAts for ULineATC {
                 panel[i] = self.tims_panel[i];
             }
         }
+
+        self.before_time = state.time;
+        self.before_speed = state.speed;
+        self.before_acceleration = acceleration_km_h_s;
         
         control_handles
     }
@@ -606,7 +616,10 @@ impl Default for ULineATC {
             ato: ULineATO::default(),
             wait_door_close_security: false,
             door_close_time: 0,
-            settings: Settings::default()
+            settings: Settings::default(),
+            before_time: 0,
+            before_speed: 0.0,
+            before_acceleration: 0.0,
         }
     }
 }
