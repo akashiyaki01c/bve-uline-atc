@@ -101,7 +101,7 @@ impl BveAts for ULineATO {
                     self.status = ATOStatus::ConstantSpeed;
                 }
 
-                self.ato_constant_speed_new(state)
+                self.ato_constant_speed(state)
             }
             ATOStatus::ConstantSpeed => {
                 let result = self.ato_constant_speed(state);
@@ -346,10 +346,6 @@ impl BveAts for ULineATO {
 
 impl ULineATO {
     fn ato_constant_speed(&mut self, state: AtsVehicleState) -> AtsHandles {
-        self.ato_constant_speed_new(state)
-    }
-    
-    fn ato_constant_speed_new(&mut self, state: AtsVehicleState) -> AtsHandles {
         let delta = state.time - self.before_time;
         let acceleration_km_h_s = (state.speed - self.before_speed) / (delta as f32 / 1000.0);
 
