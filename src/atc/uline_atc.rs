@@ -193,6 +193,11 @@ impl ULineATC {
             AtcSignal::Signal90 => self.tims_panel[38] = 1,
             _ => {}
         }
+        if self.atc_status == AtcStatus::Irekae || self.atc_status == AtcStatus::Hisetsu {
+            for i in 31..=38 {
+                self.tims_panel[i] = 0;
+            }
+        }
         self.tims_panel[9] = (self.man_power+3).min(7);
         self.tims_panel[10] = (self.man_brake).min(8);
         /* for i in 0..8 {
@@ -377,7 +382,7 @@ impl BveAts for ULineATC {
             AtcStatus::Irekae => elapse_atc_brake(self, display_handles, state, sound),
             AtcStatus::Hisetsu => elapse_hisetsu_brake(self, display_handles)
         };
-        let control_handles = match self.atc_status {
+        let mut control_handles = match self.atc_status {
             AtcStatus::ATO => elapse_atc_brake(self, control_handles, state, sound),
             AtcStatus::ATC => elapse_atc_brake(self, control_handles, state, sound),
             AtcStatus::Irekae => elapse_atc_brake(self, control_handles, state, sound),
@@ -417,6 +422,13 @@ impl BveAts for ULineATC {
         self.before_time = state.time;
         self.before_speed = state.speed;
         self.before_acceleration = acceleration_km_h_s;
+
+        if control_handles.brake == 32 {
+            control_handles.brake = 33;
+            control_handles.reverser = 0;
+        } else if control_handles.brake >= 8 {
+            control_handles.brake += 1;
+        }
         
         control_handles
     }
