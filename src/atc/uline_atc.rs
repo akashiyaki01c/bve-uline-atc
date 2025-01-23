@@ -335,8 +335,8 @@ impl BveAts for ULineATC {
         let default_handles = if self.atc_status == AtcStatus::ATO {
             let handle = self.ato.elapse(state, panel, sound);
             AtsHandles {
-                brake: handle.brake.max(self.convert_output_notch(self.man_brake)).clamp(0, 32),
-                power: handle.power.clamp(0, 32),
+                brake: handle.brake.max(self.convert_output_notch(self.man_brake)).clamp(0, self.settings.vehicle.output_brake_notches),
+                power: handle.power.clamp(0, self.settings.vehicle.output_power_notches),
                 reverser: handle.reverser,
                 constant_speed: if self.man_brake != 0 { AtsConstantSpeed::Disable as i32 } else { handle.constant_speed }
             }
@@ -423,10 +423,10 @@ impl BveAts for ULineATC {
         self.before_speed = state.speed;
         self.before_acceleration = acceleration_km_h_s;
 
-        if control_handles.brake == 32 {
-            control_handles.brake = 33;
+        if control_handles.brake == self.settings.vehicle.output_brake_notches + 1 {
+            control_handles.brake = self.settings.vehicle.output_brake_notches + 1;
             control_handles.reverser = 0;
-        } else if control_handles.brake >= 8 {
+        } else if control_handles.brake > self.vehicle_spec.brake_notches {
             control_handles.brake += 1;
         }
         
